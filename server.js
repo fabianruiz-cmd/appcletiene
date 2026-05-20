@@ -2,7 +2,9 @@ require('dotenv').config();
 const express = require('express');
 const path    = require('path');
 const app     = express();
-const PORT    = process.env.PORT || 3000;
+const PORT = process.env.PORT || process.env.RAILWAY_PORT || 8080;
+console.log("[DEBUG] process.env.PORT =", process.env.PORT);
+console.log("[DEBUG] PORT final =", PORT);
 
 // ── Configuración ─────────────────────────────────────────────────────────────
 const ENV        = process.env.WIP_ENV || 'prod'; // 'prod' o 'qa'
@@ -353,7 +355,7 @@ app.get('/api/health', function(req, res) {
   res.json({ status: 'ok', uptime: process.uptime(), env: ENV, prod_base: PROD.BASE, qa_base: QA.BASE });
 });
 
-app.listen(PORT, function() {
+app.listen(PORT, '0.0.0.0', function() {
   console.log('✅ CLTIENE WIP Dashboard en http://localhost:' + PORT);
   console.log('   Entorno activo: ' + ENV.toUpperCase());
   console.log('   PROD: ' + PROD.BASE + ' | QA: ' + QA.BASE);

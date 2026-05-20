@@ -3,13 +3,13 @@
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>CL TIENE — Bienvenido</title>
+  <title>CL TIENE — Acceso</title>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet"/>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     body {
       font-family: 'Inter', sans-serif;
-      background: #f8fafb;
+      background: #07090f;
       min-height: 100vh;
       display: flex;
       flex-direction: column;
@@ -17,374 +17,139 @@
       justify-content: center;
       padding: 24px;
     }
+    .container { width: 100%; max-width: 440px; text-align: center; }
 
-    .container {
-      width: 100%;
-      max-width: 560px;
-      text-align: center;
-    }
-
-    /* ── Logo ── */
     .logo-wrap { margin-bottom: 32px; }
-    .logo-wrap img { height: 80px; object-fit: contain; }
+    .logo-wrap img { height: 72px; object-fit: contain; }
 
-    /* ── Categorías ── */
     .cats {
-      display: flex;
-      justify-content: center;
-      gap: 32px;
-      margin-bottom: 36px;
-      flex-wrap: wrap;
+      display: flex; justify-content: center; gap: 24px;
+      margin-bottom: 36px; flex-wrap: wrap;
     }
-    .cat {
-      display: flex; flex-direction: column; align-items: center; gap: 6px;
-      font-size: 13px; color: #64748b; font-weight: 500;
-    }
-    .cat-icon {
-      width: 44px; height: 44px; border-radius: 50%;
-      display: flex; align-items: center; justify-content: center;
-      font-size: 20px;
-    }
+    .cat { display: flex; flex-direction: column; align-items: center; gap: 6px; font-size: 12px; color: #5a6580; font-weight: 500; }
+    .cat-icon { width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 18px; background: #111318; border: 1px solid #1e2535; }
 
-    /* ── Heading ── */
-    h1 { font-size: 28px; font-weight: 800; color: #1a2332; margin-bottom: 12px; }
-    .subtitle { font-size: 15px; color: #64748b; line-height: 1.6; margin-bottom: 36px; max-width: 460px; margin-left: auto; margin-right: auto; }
+    h1 { font-size: 26px; font-weight: 800; color: #e8eaf2; margin-bottom: 8px; }
+    .subtitle { font-size: 14px; color: #5a6580; line-height: 1.6; margin-bottom: 32px; }
 
-    /* ── Card ── */
     .card {
-      background: #fff;
+      background: #111318;
+      border: 1px solid #1e2535;
       border-radius: 20px;
       padding: 32px 28px;
-      box-shadow: 0 4px 24px rgba(0,0,0,.06);
       text-align: left;
     }
 
-    .step { display: none; }
-    .step.active { display: block; animation: fadeUp .3s ease; }
-    @keyframes fadeUp { from { opacity:0; transform:translateY(10px); } to { opacity:1; transform:none; } }
+    .card-title { font-size: 16px; font-weight: 700; color: #e8eaf2; margin-bottom: 4px; }
+    .card-sub { font-size: 13px; color: #5a6580; margin-bottom: 20px; }
 
-    .step-title { font-size: 17px; font-weight: 700; color: #1a2332; margin-bottom: 4px; }
-    .step-sub { font-size: 13px; color: #94a3b8; margin-bottom: 20px; }
-
-    /* Inputs */
     .field { margin-bottom: 14px; }
-    .field label { display: block; font-size: 11px; font-weight: 600; color: #64748b; text-transform: uppercase; letter-spacing: .5px; margin-bottom: 6px; }
+    .field label { display: block; font-size: 11px; font-weight: 600; color: #7080a0; text-transform: uppercase; letter-spacing: .5px; margin-bottom: 6px; }
     .field input {
-      width: 100%; border: 1.5px solid #e2e8f0; border-radius: 12px;
+      width: 100%; border: 1.5px solid #1e2535; border-radius: 12px;
       padding: 13px 16px; font-size: 15px; font-family: 'Inter', sans-serif;
-      color: #1a2332; outline: none; transition: border-color .15s;
-      background: #f8fafb;
+      color: #e8eaf2; background: #0e1117; outline: none; transition: border-color .15s;
     }
-    .field input:focus { border-color: #0d7a5f; background: #fff; }
-    .field input::placeholder { color: #cbd5e1; }
+    .field input:focus { border-color: #0d7a5f; }
+    .field input::placeholder { color: #2a3550; }
 
-    /* Info box número */
-    .phone-box {
-      background: #f0fdf4; border: 1px solid #bbf7d0;
-      border-radius: 10px; padding: 12px 16px; margin-bottom: 16px;
-      display: none;
-    }
-    .phone-box.show { display: block; }
-    .phone-box p { font-size: 13px; color: #065f46; }
-    .phone-box strong { font-size: 16px; color: #0d7a5f; display: block; margin-top: 2px; }
-
-    /* OTP inputs */
-    .otp-row { display: flex; gap: 10px; justify-content: center; margin-bottom: 8px; }
-    .otp-input {
-      width: 50px; height: 56px; text-align: center;
-      font-size: 22px; font-weight: 700;
-      border: 1.5px solid #e2e8f0; border-radius: 12px;
-      background: #f8fafb; color: #1a2332;
-      outline: none; transition: all .15s;
-    }
-    .otp-input:focus { border-color: #0d7a5f; background: #fff; transform: scale(1.05); }
-
-    /* Countdown */
-    .countdown { text-align: center; font-size: 12px; color: #94a3b8; margin: 8px 0 14px; }
-    .countdown span { color: #0d7a5f; font-weight: 600; }
-
-    /* Botones */
     .btn {
       width: 100%; padding: 14px; border-radius: 12px; border: none;
       font-family: 'Inter', sans-serif; font-weight: 700; font-size: 15px;
       cursor: pointer; transition: all .15s;
       display: flex; align-items: center; justify-content: center; gap: 8px;
+      background: #0d7a5f; color: #fff; margin-top: 4px;
     }
-    .btn-primary { background: #38bdf8; color: #fff; }
-    .btn-primary:hover { background: #0ea5e9; }
-    .btn-green { background: #0d7a5f; color: #fff; }
-    .btn-green:hover { background: #0a6650; }
-    .btn-ghost {
-      background: transparent; border: 1.5px solid #e2e8f0;
-      color: #64748b; margin-top: 8px; font-size: 13px; padding: 10px;
-    }
-    .btn-ghost:hover { border-color: #0d7a5f; color: #0d7a5f; }
+    .btn:hover { background: #0a6650; }
     .btn:disabled { opacity: .4; cursor: not-allowed; }
 
-    /* Alert */
     .alert { padding: 10px 14px; border-radius: 10px; font-size: 13px; margin-bottom: 12px; display: none; }
     .alert.show { display: block; }
-    .alert-err { background: #fef2f2; border: 1px solid #fecaca; color: #dc2626; }
-    .alert-ok  { background: #f0fdf4; border: 1px solid #bbf7d0; color: #065f46; }
+    .alert-err { background: rgba(239,68,68,.1); border: 1px solid rgba(239,68,68,.3); color: #f87171; }
 
-    /* Success */
-    .success-wrap { text-align: center; padding: 8px 0; }
-    .success-icon {
-      width: 64px; height: 64px; border-radius: 50%;
-      background: #f0fdf4; border: 2px solid #34d399;
-      display: flex; align-items: center; justify-content: center;
-      font-size: 28px; margin: 0 auto 16px;
-      animation: pop .4s cubic-bezier(.34,1.56,.64,1);
-    }
-    @keyframes pop { from { transform:scale(0); opacity:0; } to { transform:scale(1); opacity:1; } }
-    .success-name { font-size: 20px; font-weight: 800; color: #1a2332; margin-bottom: 4px; }
-    .success-sub { font-size: 13px; color: #64748b; margin-bottom: 20px; }
-
-    /* Loader */
     .loader { width: 16px; height: 16px; border: 2px solid rgba(255,255,255,.3); border-top-color: #fff; border-radius: 50%; animation: spin .6s linear infinite; }
     @keyframes spin { to { transform: rotate(360deg); } }
 
-    /* Steps indicator */
-    .steps-bar { display: flex; align-items: center; margin-bottom: 24px; }
-    .s-dot {
-      width: 26px; height: 26px; border-radius: 50%;
-      border: 2px solid #e2e8f0; display: flex; align-items: center; justify-content: center;
-      font-size: 11px; font-weight: 700; color: #94a3b8; flex-shrink: 0; transition: all .3s;
-    }
-    .s-dot.active { border-color: #0d7a5f; background: #0d7a5f; color: #fff; }
-    .s-dot.done { border-color: #34d399; background: #34d399; color: #fff; }
-    .s-line { flex: 1; height: 2px; background: #e2e8f0; transition: background .3s; }
-    .s-line.done { background: #34d399; }
-
     @media (max-width: 480px) {
       h1 { font-size: 22px; }
-      .cats { gap: 20px; }
-      .card { padding: 24px 20px; }
-      .otp-input { width: 42px; height: 48px; font-size: 18px; }
+      .card { padding: 24px 18px; }
     }
   </style>
 </head>
 <body>
 <div class="container">
-
-  <!-- Logo -->
   <div class="logo-wrap">
     <img src="https://cltiene.com/wp-content/uploads/2026/01/e0280ba2b169453b2ae09ecf07c2b8d01673e12b.png"
          alt="CL TIENE"
-         onerror="this.outerHTML='<div style=\'font-size:28px;font-weight:800;color:#1a2332\'>CL<span style=\'color:#0d7a5f\'>TIENE</span></div>'"/>
+         onerror="this.outerHTML='<div style=\'font-size:26px;font-weight:800;color:#e8eaf2\'>CL<span style=\'color:#0d7a5f\'>TIENE</span></div>'"/>
   </div>
 
-  <!-- Categorías -->
   <div class="cats">
-    <div class="cat"><div class="cat-icon" style="background:#eff6ff">👥</div>Manada</div>
-    <div class="cat"><div class="cat-icon" style="background:#fdf4ff">⭐</div>Premium</div>
-    <div class="cat"><div class="cat-icon" style="background:#fdf2f8">🐾</div>Mascotas</div>
-    <div class="cat"><div class="cat-icon" style="background:#f0fdf4">💗</div>Salud</div>
-    <div class="cat"><div class="cat-icon" style="background:#fffbeb">🚗</div>Movilidad</div>
+    <div class="cat"><div class="cat-icon">👥</div>Manada</div>
+    <div class="cat"><div class="cat-icon">⭐</div>Premium</div>
+    <div class="cat"><div class="cat-icon">🐾</div>Mascotas</div>
+    <div class="cat"><div class="cat-icon">💗</div>Salud</div>
+    <div class="cat"><div class="cat-icon">🚗</div>Movilidad</div>
   </div>
 
-  <!-- Bienvenida (paso 0) -->
-  <div id="step0">
-    <h1>Bienvenido a CL Tiene</h1>
-    <p class="subtitle">Plataforma de gestión operativa de servicios. Consulta el historial de tus clientes y registra nuevos servicios de forma rápida y segura.</p>
-    <button class="btn btn-primary" onclick="showStep(1)" style="max-width:300px;margin:0 auto;border-radius:50px;font-size:16px;padding:16px 32px">
-      Iniciar Servicio →
+  <h1>Bienvenido a CL Tiene</h1>
+  <p class="subtitle">Consulta tus servicios activos ingresando tu número de cédula.</p>
+
+  <div class="card">
+    <p class="card-title">Ingresa tu documento</p>
+    <p class="card-sub">Te mostraremos solo tus servicios registrados.</p>
+    <div class="alert alert-err" id="err"></div>
+    <div class="field">
+      <label>Número de Cédula</label>
+      <input type="text" id="inp-doc" placeholder="Ej. 1000988807" maxlength="15"
+             onkeydown="if(event.key==='Enter') entrar()"/>
+    </div>
+    <button class="btn" id="btn-entrar" onclick="entrar()">
+      Entrar al Panel →
     </button>
-  </div>
-
-  <!-- Card login -->
-  <div class="card" id="login-card" style="display:none">
-
-    <!-- Steps bar -->
-    <div class="steps-bar">
-      <div class="s-dot active" id="sd1">1</div>
-      <div class="s-line" id="sl1"></div>
-      <div class="s-dot" id="sd2">2</div>
-      <div class="s-line" id="sl2"></div>
-      <div class="s-dot" id="sd3">✓</div>
-    </div>
-
-    <!-- PASO 1: Cédula -->
-    <div class="step active" id="step1">
-      <p class="step-title">Ingresa tu documento</p>
-      <p class="step-sub">Te enviaremos un código de verificación a tu WhatsApp registrado.</p>
-      <div class="alert alert-err" id="err1"></div>
-      <div class="field">
-        <label>Número de cédula</label>
-        <input type="text" id="inp-doc" placeholder="Ej. 1000988807" maxlength="15"/>
-      </div>
-      <button class="btn btn-green" onclick="validarDocumento()">Continuar →</button>
-    </div>
-
-    <!-- PASO 2: OTP -->
-    <div class="step" id="step2">
-      <p class="step-title">Verifica tu identidad</p>
-      <p class="step-sub">Ingresa el código de 6 dígitos enviado a tu WhatsApp.</p>
-      <div class="alert alert-err" id="err2"></div>
-      <div class="alert alert-ok" id="ok2">✅ Código enviado a tu WhatsApp.</div>
-      <div class="phone-box" id="phone-box">
-        <p>Código enviado al número registrado:</p>
-        <strong id="phone-display">***</strong>
-      </div>
-      <div class="otp-row">
-        <input class="otp-input" type="tel" maxlength="1" id="o1" oninput="otpNext(this,'o2')"/>
-        <input class="otp-input" type="tel" maxlength="1" id="o2" oninput="otpNext(this,'o3')" onkeydown="otpBack(event,'o1')"/>
-        <input class="otp-input" type="tel" maxlength="1" id="o3" oninput="otpNext(this,'o4')" onkeydown="otpBack(event,'o2')"/>
-        <input class="otp-input" type="tel" maxlength="1" id="o4" oninput="otpNext(this,'o5')" onkeydown="otpBack(event,'o3')"/>
-        <input class="otp-input" type="tel" maxlength="1" id="o5" oninput="otpNext(this,'o6')" onkeydown="otpBack(event,'o4')"/>
-        <input class="otp-input" type="tel" maxlength="1" id="o6" oninput="otpFinal()" onkeydown="otpBack(event,'o5')"/>
-      </div>
-      <div class="countdown" id="countdown"></div>
-      <button class="btn btn-green" id="btn-verify" onclick="verificarCodigo()">Verificar →</button>
-      <button class="btn btn-ghost" id="btn-resend" onclick="reenviarCodigo()" disabled>Reenviar código</button>
-      <button class="btn btn-ghost" onclick="showStep(1)" style="margin-top:4px">← Cambiar documento</button>
-    </div>
-
-    <!-- PASO 3: Éxito -->
-    <div class="step" id="step3">
-      <div class="success-wrap">
-        <div class="success-icon">✓</div>
-        <p class="success-name" id="welcome-name">¡Bienvenido!</p>
-        <p class="success-sub">Identidad verificada correctamente</p>
-        <button class="btn btn-green" onclick="window.location.href='/'">
-          Entrar al Sistema →
-        </button>
-      </div>
-    </div>
-
   </div>
 </div>
 
 <script>
-let timerInterval;
-let segundos = 120;
-const doc_store = { doc: '', telefono: '' };
-
-function showStep(n) {
-  document.getElementById('step0').style.display = n === 0 ? 'block' : 'none';
-  document.getElementById('login-card').style.display = n === 0 ? 'none' : 'block';
-  [1,2,3].forEach(i => {
-    document.getElementById('step'+i).classList.toggle('active', i===n);
-    const dot = document.getElementById('sd'+i);
-    if (!dot) return;
-    if (i < n) { dot.className='s-dot done'; dot.textContent='✓'; }
-    else if (i===n) { dot.className='s-dot active'; dot.textContent=i; }
-    else { dot.className='s-dot'; dot.textContent=i; }
-    if (i < 3) {
-      const line = document.getElementById('sl'+i);
-      if (line) line.className='s-line'+(i<n?' done':'');
-    }
-  });
-  if (n===2) { document.getElementById('ok2').classList.add('show'); startCountdown(); }
-}
-
-// OTP helpers
-function otpNext(el, nextId) {
-  el.value = el.value.replace(/\D/g,'').slice(-1);
-  if (el.value) document.getElementById(nextId)?.focus();
-}
-function otpFinal() {
-  const el = document.getElementById('o6');
-  el.value = el.value.replace(/\D/g,'').slice(-1);
-  if (el.value) verificarCodigo();
-}
-function otpBack(e, prevId) {
-  if (e.key==='Backspace' && !e.target.value) document.getElementById(prevId)?.focus();
-}
-function getOTP() { return ['o1','o2','o3','o4','o5','o6'].map(id=>document.getElementById(id).value).join(''); }
-
-// Countdown
-function startCountdown() {
-  segundos = 120;
-  clearInterval(timerInterval);
-  document.getElementById('btn-resend').disabled = true;
-  timerInterval = setInterval(() => {
-    segundos--;
-    const m = Math.floor(segundos/60), s = segundos%60;
-    document.getElementById('countdown').innerHTML = `Reenviar en <span>${m}:${s.toString().padStart(2,'0')}</span>`;
-    if (segundos<=0) { clearInterval(timerInterval); document.getElementById('countdown').textContent=''; document.getElementById('btn-resend').disabled=false; }
-  }, 1000);
-}
-
-function showErr(id, msg) { const el=document.getElementById(id); el.textContent=msg; el.classList.add('show'); }
-function hideErr(id) { document.getElementById(id).classList.remove('show'); }
-
-// PASO 1: Validar documento
-async function validarDocumento() {
-  hideErr('err1');
+async function entrar() {
   const doc = document.getElementById('inp-doc').value.trim();
-  if (!doc) return showErr('err1','Ingresa tu número de documento.');
-  const btn = document.querySelector('#step1 .btn');
-  btn.innerHTML = '<span class="loader"></span> Buscando...';
-  btn.disabled = true;
-  try {
-    // Validar y enviar código en un solo paso
-    const res = await fetch('/api/auth/validate-document', {
-      method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ documento: doc })
-    });
-    const data = await res.json();
-    if (!data.success) return showErr('err1', data.message || 'Documento no encontrado.');
+  const err = document.getElementById('err');
+  err.classList.remove('show');
 
-    doc_store.doc = doc;
-    // Mostrar teléfono enmascarado
-    if (data.user?.telefono) {
-      document.getElementById('phone-display').textContent = data.user.telefono;
-      document.getElementById('phone-box').classList.add('show');
-    }
-
-    // Enviar OTP
-    await fetch('/api/auth/send-code', {
-      method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ documento: doc })
-    });
-
-    showStep(2);
-  } catch(e) {
-    showErr('err1','Error de conexión. Intenta de nuevo.');
-  } finally {
-    btn.innerHTML = 'Continuar →';
-    btn.disabled = false;
+  if (!doc) {
+    err.textContent = 'Por favor ingresa tu número de cédula.';
+    err.classList.add('show');
+    return;
   }
-}
 
-// PASO 2: Verificar OTP
-async function verificarCodigo() {
-  hideErr('err2');
-  const codigo = getOTP();
-  if (codigo.length < 6) return showErr('err2','Ingresa los 6 dígitos del código.');
-  const btn = document.getElementById('btn-verify');
+  const btn = document.getElementById('btn-entrar');
   btn.innerHTML = '<span class="loader"></span> Verificando...';
   btn.disabled = true;
+
   try {
-    const res = await fetch('/api/auth/verify-code', {
-      method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({ documento: doc_store.doc, codigo })
+    const res = await fetch('/api/auth/validate-document', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ documento: doc })
     });
     const data = await res.json();
-    if (!data.success) return showErr('err2', data.message || 'Código incorrecto.');
-    clearInterval(timerInterval);
-    document.getElementById('welcome-name').textContent = '¡Bienvenido, ' + (data.user?.nombre || 'Usuario') + '!';
-    showStep(3);
-    // Redirigir al dashboard en 2 segundos
-    setTimeout(() => { window.location.href = '/'; }, 2000);
+
+    if (data.success) {
+      // Guardar cédula en sessionStorage y redirigir
+      sessionStorage.setItem('cedula', doc);
+      sessionStorage.setItem('nombre', data.user?.nombre || '');
+      window.location.href = '/';
+    } else {
+      err.textContent = data.message || 'Documento no encontrado en el sistema.';
+      err.classList.add('show');
+    }
   } catch(e) {
-    showErr('err2','Error de conexión.');
+    err.textContent = 'Error de conexión. Intenta de nuevo.';
+    err.classList.add('show');
   } finally {
-    btn.innerHTML = 'Verificar →';
+    btn.innerHTML = 'Entrar al Panel →';
     btn.disabled = false;
   }
-}
-
-// Reenviar código
-async function reenviarCodigo() {
-  document.getElementById('btn-resend').disabled = true;
-  ['o1','o2','o3','o4','o5','o6'].forEach(id => document.getElementById(id).value='');
-  hideErr('err2');
-  await fetch('/api/auth/send-code', {
-    method:'POST', headers:{'Content-Type':'application/json'},
-    body: JSON.stringify({ documento: doc_store.doc })
-  });
-  document.getElementById('ok2').classList.add('show');
-  startCountdown();
 }
 </script>
 </body>

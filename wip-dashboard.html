@@ -248,7 +248,10 @@
       <strong>CL TIENE</strong>
       GESTIÓN OPERATIVA
     </div>
-    <div class="topbar-user">F</div>
+    <div style="display:flex;align-items:center;gap:12px">
+    <span id="user-name-top" style="font-size:13px;color:var(--muted2)"></span>
+    <button onclick="cerrarSesion()" style="background:transparent;border:1px solid var(--border2);color:var(--muted2);padding:6px 12px;border-radius:8px;font-size:12px;cursor:pointer;font-family:'Inter',sans-serif">Cerrar sesión</button>
+  </div>
   </div>
 
   <div class="content">
@@ -291,7 +294,7 @@
             <option value="placa">Placa</option>
             <option value="nombre">Nombre</option>
           </select>
-          <input type="text" id="f-search" placeholder="Buscar..." style="flex:1" onkeydown="if(event.key==='Enter')buscarServicios()"/>
+          <input type="text" id="f-search" placeholder="Buscar..." readonly style="background:var(--surface);cursor:not-allowed;opacity:.7" style="flex:1" onkeydown="if(event.key==='Enter')buscarServicios()"/>
           <button class="btn btn-primary btn-sm" onclick="buscarServicios()">Buscar</button>
         </div>
       </div>
@@ -502,6 +505,29 @@
 </main>
 
 <script>
+// ── Sesión ──────────────────────────────────────────────
+const cedula = sessionStorage.getItem('cedula');
+const nombre = sessionStorage.getItem('nombre');
+
+// Si no hay sesión, redirigir al login
+if (!cedula) { window.location.href = '/auth'; }
+
+// Mostrar nombre en topbar
+window.addEventListener('DOMContentLoaded', function() {
+  const el = document.getElementById('user-name-top');
+  if (el) el.textContent = nombre || cedula;
+  // Buscar automáticamente con la cédula del usuario
+  document.getElementById('f-search').value = cedula;
+  buscarServicios();
+});
+
+function cerrarSesion() {
+  sessionStorage.removeItem('cedula');
+  sessionStorage.removeItem('nombre');
+  window.location.href = '/auth';
+}
+// ────────────────────────────────────────────────────────
+
 const COMPANY_ID = '67379dff213b73f99523f061';
 const USER_ID    = '67a0dcadba440e5f0db90ccc';
 
