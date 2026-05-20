@@ -1,0 +1,853 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>CL TIENE — Gestión Operativa</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+  <style>
+    :root {
+      --primary: #0d7a5f;
+      --primary-light: #0d2b22;
+      --primary-mid: #1a4035;
+      --accent: #f97316;
+      --accent-light: #fff3eb;
+      --bg: #07090f;
+      --white: #111318;
+      --border: #1e2535;
+      --border2: #252e42;
+      --text: #e8eaf2;
+      --muted: #7080a0;
+      --muted2: #8090b0;
+      --success: #10b981;
+      --warning: #f59e0b;
+      --error: #ef4444;
+      --pending: #f59e0b;
+      --sidebar: #0a0c12;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { font-size: 14px; }
+    body { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--text); display: flex; min-height: 100vh; }
+
+    /* ── Sidebar ── */
+    .sidebar {
+      width: 180px; background: var(--sidebar);
+      display: flex; flex-direction: column;
+      position: fixed; top: 0; left: 0; bottom: 0; z-index: 20;
+    }
+    .sidebar-logo {
+      padding: 20px 16px 16px;
+      border-bottom: 1px solid rgba(255,255,255,.08);
+      display: flex; align-items: center; gap: 8px;
+    }
+    .sidebar-logo img { height: 32px; object-fit: contain; }
+    .sidebar-logo-text { font-size: 11px; color: rgba(255,255,255,.5); margin-top: 2px; }
+    .sidebar-nav { padding: 12px 8px; flex: 1; }
+    .nav-item {
+      display: flex; align-items: center; gap: 10px;
+      padding: 10px 12px; border-radius: 8px;
+      font-size: 13px; font-weight: 500; color: rgba(255,255,255,.6);
+      cursor: pointer; transition: all .15s; margin-bottom: 4px;
+    }
+    .nav-item:hover { background: rgba(255,255,255,.08); color: #fff; }
+    .nav-item.active { background: var(--primary); color: #fff; }
+    .nav-item svg { width: 16px; height: 16px; flex-shrink: 0; }
+
+    /* ── Main ── */
+    .main { margin-left: 180px; flex: 1; display: flex; flex-direction: column; }
+
+    /* ── Topbar ── */
+    .topbar {
+      background: var(--white); border-bottom: 1px solid var(--border);
+      padding: 12px 28px; display: flex; align-items: center; justify-content: space-between;
+      position: sticky; top: 0; z-index: 10;
+    }
+    .topbar-title { font-size: 13px; color: var(--muted); }
+    .topbar-title strong { color: var(--text); display: block; font-size: 15px; }
+    .topbar-user {
+      width: 34px; height: 34px; border-radius: 50%;
+      background: var(--primary-light); border: 1px solid var(--primary-mid);
+      display: flex; align-items: center; justify-content: center;
+      color: var(--primary); font-weight: 700; font-size: 13px; cursor: pointer;
+    }
+
+    /* ── Content ── */
+    .content { padding: 24px 28px; flex: 1; }
+    .panel { display: none; }
+    .panel.active { display: block; animation: fadeIn .2s ease; }
+    @keyframes fadeIn { from { opacity:0; transform:translateY(6px); } to { opacity:1; transform:none; } }
+
+    /* ── Panel Servicios ── */
+    .panel-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 20px; flex-wrap: wrap; gap: 12px; }
+    .panel-header h1 { font-size: 22px; font-weight: 700; }
+    .panel-header p { font-size: 13px; color: var(--muted); margin-top: 2px; }
+
+    .filters-bar {
+      background: var(--white); border: 1px solid var(--border);
+      border-radius: 12px; padding: 14px 16px;
+      display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 16px; align-items: center;
+    }
+    .filter-group { display: flex; align-items: center; gap: 6px; }
+    .filter-group label { font-size: 11px; color: var(--muted); white-space: nowrap; }
+    select, input[type=text], input[type=date], input[type=tel], input[type=datetime-local], input[type=number] {
+      border: 1px solid var(--border2); border-radius: 8px;
+      padding: 7px 10px; font-family: 'Inter', sans-serif;
+      font-size: 13px; color: var(--text); background: var(--white);
+      outline: none; transition: border-color .15s;
+    }
+    select:focus, input:focus { border-color: var(--primary); }
+    input::placeholder { color: var(--muted2); }
+    select { cursor: pointer; }
+
+    /* ── Table ── */
+    .table-card { background: var(--white); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; }
+    .table-info { padding: 12px 16px; font-size: 12px; color: var(--muted); border-bottom: 1px solid var(--border); }
+    .table-wrap { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; }
+    thead th {
+      padding: 11px 14px; text-align: left;
+      font-size: 12px; font-weight: 600; color: var(--primary);
+      border-bottom: 1px solid var(--border); white-space: nowrap;
+      background: #0e1117;
+    }
+    thead th svg { width: 13px; height: 13px; vertical-align: middle; margin-right: 4px; }
+    tbody tr { border-bottom: 1px solid var(--border); transition: background .1s; cursor: pointer; }
+    tbody tr:hover { background: var(--primary-light); }
+    tbody tr:last-child { border-bottom: none; }
+    tbody td { padding: 11px 14px; font-size: 13px; vertical-align: middle; }
+    .empty-state { text-align: center; padding: 48px; color: var(--muted); }
+    .empty-state svg { width: 40px; height: 40px; margin: 0 auto 12px; display: block; opacity: .3; }
+
+    /* Status badges */
+    .badge {
+      display: inline-flex; align-items: center; gap: 4px;
+      padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 600; white-space: nowrap;
+    }
+    .badge-pending  { background: #fef3c7; color: #92400e; }
+    .badge-done     { background: #d1fae5; color: #065f46; }
+    .badge-active   { background: #dbeafe; color: #1e40af; }
+    .badge-cancelled{ background: #fee2e2; color: #991b1b; }
+    .badge-inprog   { background: #ede9fe; color: #5b21b6; }
+
+    .wip-link { color: var(--primary); font-weight: 600; font-size: 12px; text-decoration: none; }
+    .wip-link:hover { text-decoration: underline; }
+
+    /* ── Buttons ── */
+    .btn {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 9px 16px; border-radius: 8px; border: none;
+      font-family: 'Inter', sans-serif; font-weight: 600; font-size: 13px;
+      cursor: pointer; transition: all .15s;
+    }
+    .btn-primary { background: var(--primary); color: #fff; }
+    .btn-primary:hover { background: #0a6650; }
+    .btn-accent { background: var(--accent); color: #fff; }
+    .btn-accent:hover { background: #ea6c0a; }
+    .btn-outline { background: transparent; border: 1px solid var(--border2); color: var(--muted); }
+    .btn-outline:hover { border-color: var(--primary); color: var(--primary); }
+    .btn-sm { padding: 6px 12px; font-size: 12px; }
+    .btn:disabled { opacity: .5; cursor: not-allowed; }
+
+    /* ── Form Agendar ── */
+    .form-card {
+      background: var(--white); border: 1px solid var(--border);
+      border-radius: 12px; padding: 22px 24px; margin-bottom: 16px;
+    }
+    .form-section-title {
+      display: flex; align-items: center; gap: 8px;
+      font-size: 14px; font-weight: 600; color: var(--primary);
+      margin-bottom: 16px; padding-bottom: 10px;
+      border-bottom: 1px solid var(--primary-light);
+    }
+    .form-row { display: flex; gap: 14px; margin-bottom: 14px; flex-wrap: wrap; }
+    .form-group { flex: 1; min-width: 200px; }
+    .form-group.full { flex: 100%; }
+    .form-group label { display: block; font-size: 11px; font-weight: 600; color: var(--muted); margin-bottom: 5px; text-transform: uppercase; letter-spacing: .4px; }
+    .form-group label .req { color: var(--error); }
+    .form-group input, .form-group select, .form-group textarea {
+      width: 100%; border: 1px solid var(--border2); border-radius: 8px;
+      padding: 9px 12px; font-size: 13px; color: var(--text);
+    }
+    .form-group textarea { resize: vertical; min-height: 72px; font-family: 'Inter', sans-serif; }
+    .input-with-btn { display: flex; gap: 8px; }
+    .input-with-btn input { flex: 1; }
+
+    /* Toggle */
+    .toggle-row { display: flex; align-items: center; justify-content: space-between; padding: 12px 0; border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); margin-bottom: 16px; }
+    .toggle-label { font-size: 13px; font-weight: 500; }
+    .toggle-sub { font-size: 11px; color: var(--muted); margin-top: 2px; }
+    .toggle { position: relative; width: 44px; height: 24px; }
+    .toggle input { opacity: 0; width: 0; height: 0; }
+    .toggle-slider {
+      position: absolute; inset: 0; background: var(--border2);
+      border-radius: 24px; cursor: pointer; transition: .2s;
+    }
+    .toggle-slider::before {
+      content: ''; position: absolute;
+      width: 18px; height: 18px; left: 3px; top: 3px;
+      background: #fff; border-radius: 50%; transition: .2s;
+    }
+    .toggle input:checked + .toggle-slider { background: var(--primary); }
+    .toggle input:checked + .toggle-slider::before { transform: translateX(20px); }
+
+    /* Alerts */
+    .alert { padding: 10px 14px; border-radius: 8px; font-size: 13px; margin-bottom: 12px; display: none; }
+    .alert.show { display: block; }
+    .alert-err { background: #fef2f2; border: 1px solid #fecaca; color: var(--error); }
+    .alert-ok  { background: #f0fdf4; border: 1px solid #bbf7d0; color: #065f46; }
+
+    /* Loader */
+    .loader { display: inline-block; width: 13px; height: 13px; border: 2px solid rgba(255,255,255,.3); border-top-color: currentColor; border-radius: 50%; animation: spin .6s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* Form actions */
+    .form-actions { display: flex; gap: 10px; justify-content: flex-end; padding-top: 16px; border-top: 1px solid var(--border); margin-top: 4px; }
+
+    /* Client info box */
+    .client-box {
+      background: var(--primary-light); border: 1px solid var(--primary-mid);
+      border-radius: 8px; padding: 10px 14px; margin-top: 8px; display: none;
+    }
+    .client-box.show { display: block; }
+    .client-box strong { color: var(--primary); font-size: 14px; }
+    .client-box p { font-size: 12px; color: var(--muted); margin-top: 2px; }
+
+    @media (max-width: 768px) {
+      .sidebar { width: 56px; }
+      .sidebar-logo-text, .nav-item span { display: none; }
+      .main { margin-left: 56px; }
+      .content { padding: 16px; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ══ SIDEBAR ══ -->
+<aside class="sidebar">
+  <div class="sidebar-logo">
+    <img src="https://cltiene.com/wp-content/uploads/2026/01/e0280ba2b169453b2ae09ecf07c2b8d01673e12b.png" alt="CL TIENE"
+         onerror="this.style.display='none';document.getElementById('logo-text').style.display='block'"/>
+    <div id="logo-text" style="display:none;color:#fff;font-weight:700;font-size:15px">CL<span style="color:#0d7a5f">TIENE</span></div>
+  </div>
+  <nav class="sidebar-nav">
+    <div class="nav-item active" id="nav-servicios" onclick="showPanel('servicios')">
+      <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+      <span>Consultar Servicio</span>
+    </div>
+    <div class="nav-item" id="nav-agendar" onclick="showPanel('agendar')">
+      <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+      <span>Solicitud de Servicio</span>
+    </div>
+  </nav>
+</aside>
+
+<!-- ══ MAIN ══ -->
+<main class="main">
+  <div class="topbar">
+    <div class="topbar-title">
+      <strong>CL TIENE</strong>
+      GESTIÓN OPERATIVA
+    </div>
+    <div class="topbar-user">F</div>
+  </div>
+
+  <div class="content">
+
+    <!-- ══ PANEL SERVICIOS ══ -->
+    <div class="panel active" id="panel-servicios">
+      <div class="panel-header">
+        <div>
+          <h1>Panel de Servicios</h1>
+          <p>Gestiona y visualiza todos los servicios agendados.</p>
+        </div>
+        <button class="btn btn-accent" onclick="showPanel('agendar')">
+          <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          Registrar Servicio
+        </button>
+      </div>
+
+      <!-- Filtros -->
+      <div class="filters-bar">
+        <div class="filter-group">
+          <select id="f-unidad" onchange="buscarServicios()">
+            <option value="">Todas las Unidades</option>
+          </select>
+        </div>
+        <div class="filter-group">
+          <select id="f-estado" onchange="buscarServicios()">
+            <option value="">Todos los Estados</option>
+            <option value="Pending">Pendiente</option>
+            <option value="InProgress">En Progreso</option>
+            <option value="Done">Finalizado</option>
+            <option value="Cancelled">Cancelado</option>
+          </select>
+        </div>
+        <div class="filter-group">
+          <input type="date" id="f-fecha" onchange="buscarServicios()"/>
+        </div>
+        <div class="filter-group" style="flex:1;min-width:200px">
+          <select id="f-tipo" style="width:110px">
+            <option value="subject">Cédula</option>
+            <option value="placa">Placa</option>
+            <option value="nombre">Nombre</option>
+          </select>
+          <input type="text" id="f-search" placeholder="Buscar..." style="flex:1" onkeydown="if(event.key==='Enter')buscarServicios()"/>
+          <button class="btn btn-primary btn-sm" onclick="buscarServicios()">Buscar</button>
+        </div>
+      </div>
+
+      <div class="alert alert-err" id="srv-err"></div>
+
+      <div class="table-card">
+        <div class="table-info" id="srv-info">Ingresa un término de búsqueda para ver resultados.</div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>#</th>
+                <th><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/></svg>Expediente</th>
+                <th>WIP</th>
+                <th><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>Cliente</th>
+                <th><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 3l-4 4-4-4"/></svg>Placa</th>
+                <th>Tipo</th>
+                <th><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>Fecha Prog.</th>
+                <th><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>Estado</th>
+              </tr>
+            </thead>
+            <tbody id="srv-tbody">
+              <tr><td colspan="8"><div class="empty-state"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><p>No se encontraron servicios</p><p style="font-size:11px;margin-top:4px">Asegúrate de seleccionar la Unidad de Negocio correcta.</p></div></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ PANEL AGENDAR ══ -->
+    <div class="panel" id="panel-agendar">
+      <div class="panel-header">
+        <div>
+          <h1>Agendar Nuevo Servicio</h1>
+          <p>Complete los detalles para registrar un nuevo servicio en el sistema.</p>
+        </div>
+      </div>
+
+      <div class="alert alert-err" id="ag-err"></div>
+      <div class="alert alert-ok" id="ag-ok"></div>
+
+      <!-- Datos del cliente -->
+      <div class="form-card">
+        <div class="form-section-title">
+          <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+          Datos del Solicitante y Cliente
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Número de documento <span class="req">*</span></label>
+            <div class="input-with-btn">
+              <input type="text" id="ag-doc" placeholder="Ej. 1000988807" oninput="resetClienteInfo()"/>
+              <button class="btn btn-primary btn-sm" onclick="consultarCliente()">
+                <svg width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                Consultar
+              </button>
+            </div>
+            <div class="client-box" id="client-box">
+              <strong id="client-name">—</strong>
+              <p id="client-plan">—</p>
+            </div>
+          </div>
+          <div class="form-group">
+            <label>Nombre Cliente Final <span class="req">*</span></label>
+            <input type="text" id="ag-clientname" placeholder="Se autocompleta al consultar"/>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Teléfono Cliente</label>
+            <input type="tel" id="ag-clientphone" placeholder="Ej. 300 123 4567"/>
+          </div>
+          <div class="form-group">
+            <label>Nombre de quien reporta <span class="req">*</span></label>
+            <input type="text" id="ag-reporter" placeholder="Ej. Juan Pérez"/>
+          </div>
+          <div class="form-group">
+            <label>Teléfono de quien reporta</label>
+            <input type="tel" id="ag-reporterphone" placeholder="Ej. 300 123 4567"/>
+          </div>
+        </div>
+      </div>
+
+      <!-- Información general -->
+      <div class="form-card">
+        <div class="form-section-title">
+          <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+          Información General
+          <span style="font-size:11px;color:var(--muted);font-weight:400">Seleccione la unidad de negocio y fecha del servicio</span>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Plan de Suscripción Activo</label>
+            <select id="ag-plan" onchange="onPlanChange()">
+              <option value="">Seleccione plan</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Unidad de Negocio <span class="req">*</span></label>
+            <select id="ag-bu" onchange="onBUChange()">
+              <option value="">Seleccione una unidad...</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Tipo de Servicio <span class="req">*</span></label>
+            <select id="ag-tipo">
+              <option value="">Seleccione el tipo...</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Fecha Programada <span class="req">*</span></label>
+            <input type="datetime-local" id="ag-fecha"/>
+          </div>
+        </div>
+      </div>
+
+      <!-- Toggle destino -->
+      <div class="form-card">
+        <div class="toggle-row">
+          <div>
+            <div class="toggle-label">¿Este servicio requiere traslado de un punto a otro?</div>
+            <div class="toggle-sub">Activa destino para servicios tipo grúa, traslados o desplazamientos.</div>
+          </div>
+          <label class="toggle">
+            <input type="checkbox" id="ag-toggle-destino" onchange="toggleDestino()"/>
+            <span class="toggle-slider"></span>
+          </label>
+          <span style="font-size:12px;color:var(--muted);margin-left:8px">Destino</span>
+        </div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px">
+          <!-- Origen -->
+          <div>
+            <div class="form-section-title" style="font-size:13px;margin-bottom:12px">
+              <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>
+              Origen (Desde)
+            </div>
+            <div class="form-group" style="margin-bottom:10px">
+              <label>Dirección a Visitar <span class="req">*</span></label>
+              <input type="text" id="ag-from-addr" placeholder="Ej. Calle 100 # 45-20"/>
+            </div>
+            <div class="form-group" style="margin-bottom:10px">
+              <label>Ciudad <span class="req">*</span></label>
+              <input type="text" id="ag-from-city" placeholder="Ej. Bogotá - Cundinamarca"/>
+            </div>
+            <div class="form-group">
+              <label>Detalles Adicionales</label>
+              <input type="text" id="ag-from-info" placeholder="Ej. Conjunto residencial, torre 2..."/>
+            </div>
+          </div>
+          <!-- Destino -->
+          <div id="destino-section" style="opacity:.35;pointer-events:none">
+            <div class="form-section-title" style="font-size:13px;margin-bottom:12px">
+              <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+              Destino (Hacia)
+            </div>
+            <div class="form-group" style="margin-bottom:10px">
+              <label>Dirección</label>
+              <input type="text" id="ag-to-addr" placeholder="Ej. Avenida Siempre Viva 123"/>
+            </div>
+            <div class="form-group" style="margin-bottom:10px">
+              <label>Ciudad</label>
+              <input type="text" id="ag-to-city" placeholder="Ej. Medellín - Antioquia"/>
+            </div>
+            <div class="form-group">
+              <label>Detalles Adicionales</label>
+              <input type="text" id="ag-to-info" placeholder="Ej. Bodega principal, portón sur..."/>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Info adicional -->
+      <div class="form-card">
+        <div class="form-section-title">
+          <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 3l-4 4-4-4"/></svg>
+          Información Adicional del Servicio
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Placa Vehículo</label>
+            <input type="text" id="ag-placa" placeholder="EJ. ABC-123"/>
+          </div>
+          <div class="form-group">
+            <label>Expediente</label>
+            <input type="text" id="ag-expedient" placeholder="Número expediente (opcional)"/>
+          </div>
+        </div>
+        <div class="form-group full">
+          <label>Notas / Observaciones</label>
+          <textarea id="ag-notas" placeholder="Escriba cualquier detalle o instrucción especial..."></textarea>
+        </div>
+      </div>
+
+      <div class="form-actions">
+        <button class="btn btn-outline" onclick="showPanel('servicios')">Cancelar</button>
+        <button class="btn btn-primary" id="btn-registrar" onclick="registrarServicio()">
+          <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+          Registrar Servicio
+        </button>
+      </div>
+    </div>
+
+  </div>
+</main>
+
+<script>
+const COMPANY_ID = '67379dff213b73f99523f061';
+const USER_ID    = '67a0dcadba440e5f0db90ccc';
+
+// Estado global
+let clienteData = null;  // datos del cliente consultado
+let businessUnits = [];  // BUs de la empresa
+let clienteBUs = [];     // BUs del cliente
+let tiposServicio = {};  // { buId: [tipos] }
+
+// ════ NAVEGACIÓN ════
+function showPanel(name) {
+  ['servicios','agendar'].forEach(p => {
+    document.getElementById('panel-'+p).classList.toggle('active', p===name);
+    document.getElementById('nav-'+p)?.classList.toggle('active', p===name);
+  });
+  if (name === 'agendar' && businessUnits.length === 0) cargarBUs();
+}
+
+// ════ CARGAR BUSINESS UNITS ════
+async function cargarBUs() {
+  try {
+    const res = await fetch('/wip/business-units');
+    const data = await res.json();
+    businessUnits = data.businessUnits || [];
+    // Llenar filtro de unidades en panel servicios
+    const fUnidad = document.getElementById('f-unidad');
+    fUnidad.innerHTML = '<option value="">Todas las Unidades</option>';
+    businessUnits.forEach(bu => {
+      fUnidad.innerHTML += `<option value="${bu.id}">${bu.name}</option>`;
+    });
+  } catch(e) { console.error('Error cargando BUs', e); }
+}
+
+// ════ CONSULTAR CLIENTE ════
+async function consultarCliente() {
+  const doc = document.getElementById('ag-doc').value.trim();
+  if (!doc) return alert('Ingresa el número de documento');
+
+  const btn = document.querySelector('#panel-agendar .input-with-btn .btn');
+  btn.innerHTML = '<span class="loader"></span>';
+  btn.disabled = true;
+
+  try {
+    // Cargar BUs si no están cargados
+    if (businessUnits.length === 0) await cargarBUs();
+
+    // Buscar en todos los BUs en paralelo
+    const promesas = businessUnits.map(bu =>
+      fetch(`/wip/subscriptions?searchTerm=${encodeURIComponent(doc)}&businessUnitId=${bu.id}`)
+        .then(r => r.json()).catch(() => null)
+    );
+    const resultados = await Promise.all(promesas);
+
+    // Recopilar todos los resultados válidos
+    const clientes = [];
+    resultados.forEach((r, i) => {
+      const items = Array.isArray(r) ? r : (r && r.id ? [r] : []);
+      items.forEach(c => {
+        if (!clientes.find(x => x.id === c.id)) clientes.push({...c, buId: businessUnits[i].id, buName: businessUnits[i].name});
+      });
+    });
+
+    if (!clientes.length) {
+      document.getElementById('client-box').className = 'client-box';
+      document.getElementById('ag-clientname').value = '';
+      alert('No se encontró cliente con ese documento.');
+      return;
+    }
+
+    clienteData = clientes[0];
+    clienteBUs = [...new Set(clientes.map(c => ({id: c.buId, name: c.buName})))];
+
+    // Mostrar info del cliente
+    document.getElementById('client-name').textContent = clienteData.name || '—';
+    document.getElementById('client-plan').textContent = `CC ${clienteData.documentId || doc}`;
+    document.getElementById('client-box').className = 'client-box show';
+    document.getElementById('ag-clientname').value = clienteData.name || '';
+
+    // Llenar planes
+    const planSel = document.getElementById('ag-plan');
+    planSel.innerHTML = '<option value="">Seleccione plan</option>';
+    clientes.forEach(c => {
+      if (c.name) planSel.innerHTML += `<option value="${c.id}|${c.buId}">${c.buName}</option>`;
+    });
+
+    // Llenar BUs disponibles
+    const buSel = document.getElementById('ag-bu');
+    buSel.innerHTML = '<option value="">Seleccione una unidad...</option>';
+    clienteBUs.forEach(bu => {
+      buSel.innerHTML += `<option value="${bu.id}">${bu.name}</option>`;
+    });
+
+  } catch(e) {
+    alert('Error al consultar: ' + e.message);
+  } finally {
+    btn.innerHTML = '<svg width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg> Consultar';
+    btn.disabled = false;
+  }
+}
+
+function resetClienteInfo() {
+  clienteData = null;
+  document.getElementById('client-box').className = 'client-box';
+  document.getElementById('ag-clientname').value = '';
+  document.getElementById('ag-plan').innerHTML = '<option value="">Seleccione plan</option>';
+  document.getElementById('ag-bu').innerHTML = '<option value="">Seleccione una unidad...</option>';
+  document.getElementById('ag-tipo').innerHTML = '<option value="">Seleccione el tipo...</option>';
+}
+
+async function onPlanChange() {
+  const val = document.getElementById('ag-plan').value;
+  if (!val) return;
+  const [customerId, buId] = val.split('|');
+  document.getElementById('ag-bu').value = buId;
+  await cargarTipos(customerId, buId);
+}
+
+async function onBUChange() {
+  const buId = document.getElementById('ag-bu').value;
+  if (!buId || !clienteData) return;
+  await cargarTipos(clienteData.id, buId);
+}
+
+async function cargarTipos(customerId, buId) {
+  const tipoSel = document.getElementById('ag-tipo');
+  tipoSel.innerHTML = '<option value="">Cargando...</option>';
+  try {
+    const res = await fetch('/wip/subscriptions/detail', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ customerId, businessUnitId: buId, companyId: COMPANY_ID })
+    });
+    const data = await res.json();
+    const tipos = (data.typeServices || []).filter(t => t.availability && t.enabled && t.serviceLimit > 0);
+    tipoSel.innerHTML = '<option value="">Seleccione el tipo...</option>';
+    tipos.forEach(t => {
+      tipoSel.innerHTML += `<option value="${t.id}|${buId}|${t.name}">${t.name} (${t.serviceLimit - t.consumption} usos restantes)</option>`;
+    });
+    if (!tipos.length) tipoSel.innerHTML = '<option value="">Sin servicios disponibles</option>';
+  } catch(e) {
+    tipoSel.innerHTML = '<option value="">Error al cargar tipos</option>';
+  }
+}
+
+function toggleDestino() {
+  const on = document.getElementById('ag-toggle-destino').checked;
+  const sec = document.getElementById('destino-section');
+  sec.style.opacity = on ? '1' : '.35';
+  sec.style.pointerEvents = on ? 'auto' : 'none';
+}
+
+// ════ REGISTRAR SERVICIO ════
+async function registrarServicio() {
+  const doc     = document.getElementById('ag-doc').value.trim();
+  const cliente = document.getElementById('ag-clientname').value.trim();
+  const buRaw   = document.getElementById('ag-bu').value;
+  const tipoRaw = document.getElementById('ag-tipo').value;
+  const fecha   = document.getElementById('ag-fecha').value;
+  const fromAddr= document.getElementById('ag-from-addr').value.trim();
+  const fromCity= document.getElementById('ag-from-city').value.trim();
+
+  const err = document.getElementById('ag-err');
+  err.classList.remove('show');
+
+  if (!doc || !cliente || !buRaw || !tipoRaw || !fecha || !fromAddr || !fromCity) {
+    err.textContent = 'Por favor completa todos los campos obligatorios (*)';
+    err.classList.add('show');
+    return;
+  }
+
+  const [formId, buId, tipoNombre] = tipoRaw.split('|');
+  const buName = document.getElementById('ag-bu').options[document.getElementById('ag-bu').selectedIndex].text;
+
+  // Buscar BU en businessUnits para obtener companyFormId
+  const bu = businessUnits.find(b => b.id === buId);
+  const tipo = bu?.serviceTypes?.find(t => t.formId === formId || t.name === tipoNombre);
+  const companyFormId = tipo?.companyFormId || formId;
+
+  const body = {
+    owner: { id: COMPANY_ID, name: 'MULTISERVICIOS CL TIENE', type: 'Owner' },
+    buOwner: { id: COMPANY_ID, name: 'MULTISERVICIOS CL TIENE', type: 'BuOwner' },
+    creatorUser: { id: USER_ID, name: 'MULTISERVICIOS CL TIENE' },
+    expedient: document.getElementById('ag-expedient').value || '',
+    userName: document.getElementById('ag-reporter').value || cliente,
+    userPhone: document.getElementById('ag-reporterphone').value || '',
+    userClientePhone: document.getElementById('ag-clientphone').value || '',
+    finalClientName: cliente,
+    customerDocument: doc,
+    customerId: clienteData?.id || null,
+    businessUnitId: buId,
+    businessUnitName: buName,
+    plate: document.getElementById('ag-placa').value || '',
+    type: tipoNombre,
+    formId: formId,
+    companyFormId: companyFormId,
+    scheduledDate: new Date(fecha).toISOString(),
+    note: document.getElementById('ag-notas').value || '',
+    automaticCalculation: true,
+    fromWhere: { address: fromAddr, city: fromCity, otherInfo: document.getElementById('ag-from-info').value || '' },
+    whereTo: {
+      address: document.getElementById('ag-to-addr').value || fromAddr,
+      city: document.getElementById('ag-to-city').value || fromCity,
+      otherInfo: document.getElementById('ag-to-info').value || ''
+    },
+    fields: {}
+  };
+
+  const btn = document.getElementById('btn-registrar');
+  btn.innerHTML = '<span class="loader"></span> Registrando...';
+  btn.disabled = true;
+
+  try {
+    const res = await fetch('/wip/services/create', {
+      method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body)
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || `Error ${res.status}`);
+
+    const ok = document.getElementById('ag-ok');
+    ok.textContent = `✅ Servicio creado: ${data.wipExpedient || data.id || 'OK'}`;
+    ok.classList.add('show');
+    setTimeout(() => { ok.classList.remove('show'); showPanel('servicios'); }, 3000);
+  } catch(e) {
+    err.textContent = 'Error al registrar: ' + e.message;
+    err.classList.add('show');
+  } finally {
+    btn.innerHTML = '<svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> Registrar Servicio';
+    btn.disabled = false;
+  }
+}
+
+// ════ BUSCAR SERVICIOS ════
+async function buscarServicios() {
+  const search  = document.getElementById('f-search').value.trim();
+  const estado  = document.getElementById('f-estado').value;
+  const buId    = document.getElementById('f-unidad').value;
+  const fecha   = document.getElementById('f-fecha').value;
+  const err = document.getElementById('srv-err');
+  err.classList.remove('show');
+
+  document.getElementById('srv-info').textContent = 'Buscando...';
+  document.getElementById('srv-tbody').innerHTML = '<tr><td colspan="8" style="text-align:center;padding:24px;color:var(--muted)"><div class="loader" style="border-top-color:var(--primary)"></div></td></tr>';
+
+  try {
+    const body = {
+      pageSize: 50, page: 0,
+      sort: 'scheduledDate', sortDirection: 'Desc',
+      subject: search,
+      businessUnitId: buId,
+    };
+    const res  = await fetch('/wip/services/search', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) });
+    const data = await res.json();
+    let rows = data.data || [];
+
+    // Filtros locales
+    if (estado) rows = rows.filter(r => r.status === estado);
+    if (fecha)  rows = rows.filter(r => r.scheduledDate && r.scheduledDate.startsWith(fecha));
+
+    renderTabla(rows, data.totalRows);
+  } catch(e) {
+    err.textContent = 'Error: ' + e.message;
+    err.classList.add('show');
+    document.getElementById('srv-tbody').innerHTML = '';
+    document.getElementById('srv-info').textContent = 'Error al buscar';
+  }
+}
+
+function renderTabla(rows, total) {
+  document.getElementById('srv-info').textContent = rows.length ? `${rows.length} servicios encontrados.` : 'No se encontraron servicios.';
+  const statusMap = {
+    Pending:    ['badge-pending',  'Pendiente'],
+    InProgress: ['badge-inprog',   'En Progreso'],
+    Done:       ['badge-done',     'Finalizado'],
+    Cancelled:  ['badge-cancelled','Cancelado'],
+  };
+  if (!rows.length) {
+    document.getElementById('srv-tbody').innerHTML = `<tr><td colspan="8"><div class="empty-state"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><p>No se encontraron servicios</p><p style="font-size:11px;margin-top:4px">Asegúrate de seleccionar la Unidad de Negocio correcta.</p></div></td></tr>`;
+    return;
+  }
+  document.getElementById('srv-tbody').innerHTML = rows.map((r, i) => {
+    const [cls, label] = statusMap[r.status] || ['badge-pending', r.status];
+    const fecha = r.scheduledDate ? new Date(r.scheduledDate).toLocaleString('es-CO', {day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'}) : '—';
+    const wipExp = r.wipExpedient || '—';
+    const trackUrl = r.url ? `<a href="${r.url}" target="_blank" class="wip-link">${wipExp}</a>` : `<span style="color:var(--primary);font-weight:600;font-size:12px">${wipExp}</span>`;
+    const placa = r.customerDocument || r.plate || '—';
+    return `<tr>
+      <td style="color:var(--muted);font-size:12px">${i+1}</td>
+      <td style="color:var(--muted);font-size:12px">—</td>
+      <td>${trackUrl}</td>
+      <td><div style="font-weight:500">${r.finalClientName || r.userName || '—'}</div><div style="font-size:11px;color:var(--muted)">CC ${r.customerDocument || '—'}</div></td>
+      <td>${r.plate ? `<span style="background:var(--border);padding:2px 8px;border-radius:4px;font-size:12px;font-weight:600">${r.plate}</span>` : (placa !== '—' ? `<span style="background:var(--border);padding:2px 8px;border-radius:4px;font-size:12px;font-weight:600">${placa}</span>` : '—')}</td>
+      <td style="font-size:12px;color:var(--muted)">${r.type || '—'}</td>
+      <td style="font-size:12px">${fecha}</td>
+      <td><span class="badge ${cls}">${label}</span></td>
+    </tr>`;
+  }).join('');
+}
+
+// Init
+window.addEventListener('DOMContentLoaded', () => {
+  cargarBUs();
+  // Buscar todos los servicios al inicio
+  buscarServicios();
+});
+</script>
+</body>
+</html>
+<style id="responsive-styles">
+@media (max-width: 900px) {
+  .sidebar { width: 56px; }
+  .sidebar-logo img, #logo-text { display: none !important; }
+  .sidebar-logo { justify-content: center; padding: 16px 8px; }
+  .nav-item span { display: none; }
+  .nav-item { justify-content: center; padding: 12px; }
+  .main { margin-left: 56px; }
+  .topbar { padding: 10px 16px; }
+  .content { padding: 16px; }
+  .panel-header { flex-direction: column; align-items: flex-start; gap: 10px; }
+  .panel-header .btn { width: 100%; justify-content: center; }
+  .filters-bar { flex-direction: column; gap: 8px; }
+  .filters-bar select, .filters-bar input { width: 100%; }
+  .filter-group { width: 100%; }
+  .filter-group select { flex: 1; }
+  .form-row { flex-direction: column; }
+  .form-group { min-width: unset; width: 100%; }
+  .input-with-btn { flex-wrap: wrap; }
+  .input-with-btn input { min-width: 0; }
+  table { font-size: 12px; }
+  thead th, tbody td { padding: 8px 10px; }
+  /* Ocultar columnas menos importantes en móvil */
+  table th:nth-child(1), table td:nth-child(1),
+  table th:nth-child(3), table td:nth-child(3),
+  table th:nth-child(5), table td:nth-child(5),
+  table th:nth-child(6), table td:nth-child(6) { display: none; }
+  /* Grid destino/origen en columna */
+  .form-card [style*="grid-template-columns:1fr 1fr"] {
+    display: flex !important; flex-direction: column !important;
+  }
+  .form-actions { flex-direction: column; }
+  .form-actions .btn { width: 100%; justify-content: center; }
+  .stats { grid-template-columns: 1fr 1fr !important; }
+}
+
+@media (max-width: 500px) {
+  .topbar-title strong { font-size: 13px; }
+  .panel-header h1 { font-size: 18px; }
+  table th:nth-child(7), table td:nth-child(7) { display: none; }
+}
+</style>
