@@ -539,6 +539,20 @@ function cerrarSesion() {
 }
 // ────────────────────────────────────────────────────────
 
+
+const PLAN_MAP = {
+  '67379e74213b73f99523f063': { plan: 'Plan Salud',     color: '#3b82f6' },
+  '673e040b2540ca63fbc3bad8': { plan: 'Plan Salud',     color: '#3b82f6' },
+  '67379e864b246b4609e3da9d': { plan: 'Plan Mascotas',  color: '#10b981' },
+  '67379ea1213b73f99523f064': { plan: 'Plan Movilidad', color: '#f59e0b' },
+  '673b9acc4b246b4609e3dab1': { plan: 'Plan Manada',    color: '#0d7a5f' },
+  '673b9adc4b246b4609e3dab2': { plan: 'Plan Manada',    color: '#0d7a5f' },
+  '67379eb4213b73f99523f065': { plan: 'Plan Manada',    color: '#0d7a5f' },
+  '67379e984b246b4609e3da9e': { plan: 'Plan Premium',   color: '#8b5cf6' },
+  '678923e79820ca27731f5717': { plan: 'Plan Premium',   color: '#8b5cf6' },
+  '67379ed4213b73f99523f066': { plan: 'Plan Premium',   color: '#8b5cf6' },
+  '681297d15f1930acb374cd11': { plan: 'CL TIENE Propios', color: '#64748b' },
+};
 const COMPANY_ID = '67379dff213b73f99523f061';
 const USER_ID    = '67a0dcadba440e5f0db90ccc';
 
@@ -607,14 +621,15 @@ async function consultarCliente() {
       document.getElementById('client-box').className = 'client-box show';
       document.getElementById('ag-clientname').value = clienteData.name || '';
 
-      // Llenar planes del cliente — deduplicar por BU
+      // Llenar planes del cliente — usar nombres del sitio web
       const planSel = document.getElementById('ag-plan');
       planSel.innerHTML = '<option value="">Seleccione plan</option>';
-      const busVistas = new Set();
+      const planesVistos = new Set();
       clientes.forEach(c => {
-        if (!busVistas.has(c.buName)) {
-          busVistas.add(c.buName);
-          planSel.innerHTML += '<option value="' + c.id + '|' + c.buId + '">' + c.buName + '</option>';
+        const planInfo = PLAN_MAP[c.buId] || { plan: c.buName, color: '#64748b' };
+        if (!planesVistos.has(planInfo.plan)) {
+          planesVistos.add(planInfo.plan);
+          planSel.innerHTML += '<option value="' + c.id + '|' + c.buId + '">' + planInfo.plan + '</option>';
         }
       });
     } else {
@@ -630,11 +645,13 @@ async function consultarCliente() {
       planSel.innerHTML = '<option value="">Sin plan activo</option>';
     }
 
-    // Siempre cargar TODAS las unidades de negocio disponibles
+    // Cargar todas las BUs con nombres amigables
     const buSel = document.getElementById('ag-bu');
     buSel.innerHTML = '<option value="">Seleccione una unidad...</option>';
     businessUnits.forEach(bu => {
-      buSel.innerHTML += '<option value="' + bu.id + '">' + bu.name + '</option>';
+      const planInfo = PLAN_MAP[bu.id];
+      const label = planInfo ? planInfo.plan + ' — ' + bu.name : bu.name;
+      buSel.innerHTML += '<option value="' + bu.id + '">' + label + '</option>';
     });
 
   } catch(e) {
