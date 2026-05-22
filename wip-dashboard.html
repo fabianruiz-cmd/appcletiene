@@ -585,14 +585,12 @@ async function consultarCliente() {
     // Cargar BUs si no están cargados
     if (businessUnits.length === 0) await cargarBUs();
 
-    // Buscar en todos los BUs en paralelo
+    // 1. Buscar cliente en suscripciones
     const promesas = businessUnits.map(bu =>
       fetch(`/wip/subscriptions?searchTerm=${encodeURIComponent(doc)}&businessUnitId=${bu.id}`)
         .then(r => r.json()).catch(() => null)
     );
     const resultados = await Promise.all(promesas);
-
-    // Recopilar todos los resultados válidos
     const clientes = [];
     resultados.forEach((r, i) => {
       const items = Array.isArray(r) ? r : (r && r.id ? [r] : []);
@@ -601,34 +599,38 @@ async function consultarCliente() {
       });
     });
 
-    if (!clientes.length) {
-      document.getElementById('client-box').className = 'client-box';
+    // Mostrar info del cliente si existe
+    if (clientes.length > 0) {
+      clienteData = clientes[0];
+      document.getElementById('client-name').textContent = clienteData.name || '—';
+      document.getElementById('client-plan').textContent = 'CC ' + (clienteData.documentId || doc);
+      document.getElementById('client-box').className = 'client-box show';
+      document.getElementById('ag-clientname').value = clienteData.name || '';
+
+      // Llenar planes del cliente
+      const planSel = document.getElementById('ag-plan');
+      planSel.innerHTML = '<option value="">Seleccione plan</option>';
+      clientes.forEach(c => {
+        planSel.innerHTML += '<option value="' + c.id + '|' + c.buId + '">' + c.buName + '</option>';
+      });
+    } else {
+      // Si no tiene suscripción, mostrar igualmente y cargar todas las BUs
+      clienteData = { id: null, name: doc };
+      document.getElementById('client-name').textContent = 'CC ' + doc;
+      document.getElementById('client-plan').textContent = 'Sin plan registrado';
+      document.getElementById('client-box').className = 'client-box show';
       document.getElementById('ag-clientname').value = '';
-      alert('No se encontró cliente con ese documento.');
-      return;
+
+      // Plan vacío — dejar que seleccione BU manualmente
+      const planSel = document.getElementById('ag-plan');
+      planSel.innerHTML = '<option value="">Sin plan activo</option>';
     }
 
-    clienteData = clientes[0];
-    clienteBUs = [...new Set(clientes.map(c => ({id: c.buId, name: c.buName})))];
-
-    // Mostrar info del cliente
-    document.getElementById('client-name').textContent = clienteData.name || '—';
-    document.getElementById('client-plan').textContent = `CC ${clienteData.documentId || doc}`;
-    document.getElementById('client-box').className = 'client-box show';
-    document.getElementById('ag-clientname').value = clienteData.name || '';
-
-    // Llenar planes
-    const planSel = document.getElementById('ag-plan');
-    planSel.innerHTML = '<option value="">Seleccione plan</option>';
-    clientes.forEach(c => {
-      if (c.name) planSel.innerHTML += `<option value="${c.id}|${c.buId}">${c.buName}</option>`;
-    });
-
-    // Llenar BUs disponibles
+    // Siempre cargar TODAS las unidades de negocio disponibles
     const buSel = document.getElementById('ag-bu');
     buSel.innerHTML = '<option value="">Seleccione una unidad...</option>';
-    clienteBUs.forEach(bu => {
-      buSel.innerHTML += `<option value="${bu.id}">${bu.name}</option>`;
+    businessUnits.forEach(bu => {
+      buSel.innerHTML += '<option value="' + bu.id + '">' + bu.name + '</option>';
     });
 
   } catch(e) {
