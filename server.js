@@ -368,19 +368,20 @@ app.delete('/wip/customers/:id', async (req, res) => {
 // Traer todos los suscriptores por BU con múltiples términos
 app.get('/wip/subscriptions/all', async (req, res) => {
   try {
-    const buRes = await wipFetch('/business/api/v1/BusinessUnit/company/' + PROD.COMPANY_ID + '/business-units/services');
-    const buIds = (buRes.data.businessUnits || []).map(b => ({ id: b.id, name: b.name }));
+    const buRes = await wipFetch('/business/api/v1/BusinessUnit/company/' + COMPANY_ID + '/business-units/services');
+    const buList = (buRes.data.businessUnits || []).map(b => ({ id: b.id, name: b.name }));
 
-    // Términos para barrer todos los registros
-    const terminos = ['a','e','i','o','u','1','2','3','4','5','6','7','8','9','0'];
+    // Términos para barrer todos los registros — letras y números comunes en nombres colombianos
+    const terminos = ['a','e','i','o','u','r','s','n','l','c','m','d','p','g','b','f','j','t','1','2','3','4','5','6','7','8','9','0'];
     const seen = new Set();
     const subs = [];
 
+    // Ejecutar todas las búsquedas en paralelo
     const promesas = [];
-    for (const bu of buIds) {
+    for (const bu of buList) {
       for (const term of terminos) {
         promesas.push(
-          wipFetch('/Customer/api/v1/Customer/Subscription?companyId=' + PROD.COMPANY_ID + '&businessUnitId=' + bu.id + '&searchTerm=' + encodeURIComponent(term))
+          wipFetch('/Customer/api/v1/Customer/Subscription?companyId=' + COMPANY_ID + '&businessUnitId=' + bu.id + '&searchTerm=' + encodeURIComponent(term))
             .then(r => {
               const items = Array.isArray(r.data) ? r.data : (r.data && r.data.id ? [r.data] : []);
               items.forEach(s => {
@@ -396,8 +397,10 @@ app.get('/wip/subscriptions/all', async (req, res) => {
     }
 
     await Promise.all(promesas);
+    console.log('[SUBS/ALL] Total encontrados:', subs.length);
     res.json({ total: subs.length, data: subs });
   } catch(e) {
+    console.error('[SUBS/ALL]', e.message);
     res.status(500).json({ message: e.message });
   }
 });
