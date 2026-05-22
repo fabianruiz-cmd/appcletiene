@@ -607,11 +607,15 @@ async function consultarCliente() {
       document.getElementById('client-box').className = 'client-box show';
       document.getElementById('ag-clientname').value = clienteData.name || '';
 
-      // Llenar planes del cliente
+      // Llenar planes del cliente — deduplicar por BU
       const planSel = document.getElementById('ag-plan');
       planSel.innerHTML = '<option value="">Seleccione plan</option>';
+      const busVistas = new Set();
       clientes.forEach(c => {
-        planSel.innerHTML += '<option value="' + c.id + '|' + c.buId + '">' + c.buName + '</option>';
+        if (!busVistas.has(c.buName)) {
+          busVistas.add(c.buName);
+          planSel.innerHTML += '<option value="' + c.id + '|' + c.buId + '">' + c.buName + '</option>';
+        }
       });
     } else {
       // Si no tiene suscripción, mostrar igualmente y cargar todas las BUs
