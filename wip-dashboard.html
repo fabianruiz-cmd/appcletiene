@@ -936,35 +936,26 @@ function accederSuscriptores() {
 }
 
 
+// Paginación suscriptores
+let _subPagina = 1;
+const _subPorPagina = 50;
+
 async function cargarTodosSuscriptores() {
-  document.getElementById('sub-info').textContent = 'Cargando todos los suscriptores...';
+  _subPagina = 1;
+  window._todosSuscriptores = [];
+  await cargarPaginaSuscriptores();
+}
+
+async function cargarPaginaSuscriptores() {
+  document.getElementById('sub-info').textContent = 'Cargando página ' + _subPagina + '...';
   document.getElementById('sub-tbody').innerHTML = '<tr><td colspan="6" style="text-align:center;padding:24px"><div class="loader" style="border-top-color:var(--primary)"></div></td></tr>';
+
   try {
-    // Buscar con letras comunes para traer todos los suscriptores
-    const terminos = ['a', 'e', 'i', 'o', 'u', '1', '2', '3'];
-    const seen = new Set();
-    const subs = [];
-
-    for (const bu of businessUnits) {
-      for (const term of terminos) {
-        try {
-          const r = await fetch('/wip/subscriptions?searchTerm=' + encodeURIComponent(term) + '&businessUnitId=' + bu.id);
-          const data = await r.json();
-          const items = Array.isArray(data) ? data : (data && data.id ? [data] : []);
-          items.forEach(s => {
-            const key = (s.documentId || s.id) + bu.id;
-            if (!seen.has(key)) {
-              seen.add(key);
-              subs.push({ ...s, buId: bu.id, buName: bu.name });
-            }
-          });
-        } catch(e) {}
-      }
-    }
-
-    window._todosSuscriptores = subs;
-    document.getElementById('sub-info').textContent = subs.length + ' suscriptor(es) encontrado(s).';
-    renderSuscriptores(subs);
+    // Usar endpoint optimizado que trae todos
+    const r = await fetch('/wip/subscriptions/all');
+    const data = await r.json();
+    window._todosSuscriptores = data.data || [];
+    renderSuscriptores(window._todosSuscriptores);
   } catch(e) {
     document.getElementById('sub-err').textContent = 'Error: ' + e.message;
     document.getElementById('sub-err').classList.add('show');
@@ -999,13 +990,28 @@ async function buscarSuscriptores() {
 }
 
 function renderSuscriptores(subs) {
+  // Filtrar si hay búsqueda activa
+  const planFiltro = document.getElementById('sub-bu')?.value || '';
+  const textFiltro = document.getElementById('sub-search')?.value?.trim().toLowerCase() || '';
+
+  let filtrados = subs;
+  if (planFiltro) {
+    const ids = planFiltro.split(',');
+    filtrados = filtrados.filter(s => ids.includes(s.buId));
+  }
+  if (textFiltro) {
+    filtrados = filtrados.filter(s =>
+      (s.name && s.name.toLowerCase().includes(textFiltro)) ||
+      (s.documentId && s.documentId.includes(textFiltro)) ||
+      (s.phone && s.phone.includes(textFiltro))
+    );
+  }
+
   // Deduplicar por documentId — agrupar planes por cliente
   const clienteMap = new Map();
-  subs.forEach(s => {
+  filtrados.forEach(s => {
     const key = s.documentId || s.id;
-    if (!clienteMap.has(key)) {
-      clienteMap.set(key, { ...s, planes: [] });
-    }
+    if (!clienteMap.has(key)) clienteMap.set(key, { ...s, planes: [] });
     const planInfo = PLAN_MAP[s.buId] || { plan: s.buName, color: '#64748b' };
     const existing = clienteMap.get(key);
     if (!existing.planes.find(p => p.plan === planInfo.plan)) {
@@ -1014,14 +1020,22 @@ function renderSuscriptores(subs) {
   });
 
   const clientes = Array.from(clienteMap.values());
-  document.getElementById('sub-info').textContent = clientes.length + ' suscriptor(es) encontrado(s).';
+  const total = clientes.length;
+  const inicio = (_subPagina - 1) * _subPorPagina;
+  const fin    = inicio + _subPorPagina;
+  const pagina = clientes.slice(inicio, fin);
+  const totalPaginas = Math.ceil(total / _subPorPagina);
 
-  if (!clientes.length) {
+  document.getElementById('sub-info').textContent =
+    total + ' suscriptor(es) — Página ' + _subPagina + ' de ' + totalPaginas;
+
+  if (!pagina.length) {
     document.getElementById('sub-tbody').innerHTML = '<tr><td colspan="6"><div class="empty-state"><p>No se encontraron suscriptores.</p></div></td></tr>';
+    renderPaginacion(totalPaginas, clientes);
     return;
   }
 
-  document.getElementById('sub-tbody').innerHTML = clientes.map((s, i) => {
+  document.getElementById('sub-tbody').innerHTML = pagina.map((s, i) => {
     const planesHtml = s.planes.map(p =>
       '<span style="background:' + p.color + '22;color:' + p.color + ';padding:2px 8px;border-radius:20px;font-size:11px;font-weight:600;margin-right:4px">' + p.plan + '</span>'
     ).join('');
@@ -1029,7 +1043,7 @@ function renderSuscriptores(subs) {
       ? '<span class="badge badge-done">Activo</span>'
       : '<span class="badge badge-cancelled">Expirado</span>';
     return '<tr>' +
-      '<td style="color:var(--muted);font-size:12px">' + (i+1) + '</td>' +
+      '<td style="color:var(--muted);font-size:12px">' + (inicio + i + 1) + '</td>' +
       '<td style="font-weight:500">' + (s.name || '—') + '</td>' +
       '<td style="font-size:12px">' + (s.documentId || '—') + '</td>' +
       '<td style="font-size:12px">' + (s.phone || '—') + '</td>' +
@@ -1037,6 +1051,42 @@ function renderSuscriptores(subs) {
       '<td>' + estadoHtml + '</td>' +
     '</tr>';
   }).join('');
+
+  renderPaginacion(totalPaginas, clientes);
+}
+
+function renderPaginacion(totalPaginas, clientes) {
+  // Eliminar paginación anterior
+  const old = document.getElementById('sub-paginacion');
+  if (old) old.remove();
+
+  if (totalPaginas <= 1) return;
+
+  const div = document.createElement('div');
+  div.id = 'sub-paginacion';
+  div.style.cssText = 'display:flex;align-items:center;justify-content:center;gap:8px;padding:16px;';
+
+  const btnPrev = document.createElement('button');
+  btnPrev.className = 'btn btn-outline btn-sm';
+  btnPrev.textContent = '← Anterior';
+  btnPrev.disabled = _subPagina <= 1;
+  btnPrev.onclick = function() { _subPagina--; renderSuscriptores(window._todosSuscriptores); };
+
+  const info = document.createElement('span');
+  info.style.cssText = 'font-size:13px;color:var(--muted);padding:0 8px;';
+  info.textContent = 'Página ' + _subPagina + ' / ' + totalPaginas;
+
+  const btnNext = document.createElement('button');
+  btnNext.className = 'btn btn-primary btn-sm';
+  btnNext.textContent = 'Siguiente →';
+  btnNext.disabled = _subPagina >= totalPaginas;
+  btnNext.onclick = function() { _subPagina++; renderSuscriptores(window._todosSuscriptores); };
+
+  div.appendChild(btnPrev);
+  div.appendChild(info);
+  div.appendChild(btnNext);
+
+  document.querySelector('.table-card').appendChild(div);
 }
 
 // Init

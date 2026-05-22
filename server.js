@@ -364,6 +364,44 @@ app.delete('/wip/customers/:id', async (req, res) => {
 });
 
 // ── Health check ──────────────────────────────────────────────────────────────
+
+// Traer todos los suscriptores por BU con múltiples términos
+app.get('/wip/subscriptions/all', async (req, res) => {
+  try {
+    const buRes = await wipFetch('/business/api/v1/BusinessUnit/company/' + PROD.COMPANY_ID + '/business-units/services');
+    const buIds = (buRes.data.businessUnits || []).map(b => ({ id: b.id, name: b.name }));
+
+    // Términos para barrer todos los registros
+    const terminos = ['a','e','i','o','u','1','2','3','4','5','6','7','8','9','0'];
+    const seen = new Set();
+    const subs = [];
+
+    const promesas = [];
+    for (const bu of buIds) {
+      for (const term of terminos) {
+        promesas.push(
+          wipFetch('/Customer/api/v1/Customer/Subscription?companyId=' + PROD.COMPANY_ID + '&businessUnitId=' + bu.id + '&searchTerm=' + encodeURIComponent(term))
+            .then(r => {
+              const items = Array.isArray(r.data) ? r.data : (r.data && r.data.id ? [r.data] : []);
+              items.forEach(s => {
+                const key = (s.documentId || s.id) + bu.id;
+                if (!seen.has(key)) {
+                  seen.add(key);
+                  subs.push({ ...s, buId: bu.id, buName: bu.name });
+                }
+              });
+            }).catch(() => {})
+        );
+      }
+    }
+
+    await Promise.all(promesas);
+    res.json({ total: subs.length, data: subs });
+  } catch(e) {
+    res.status(500).json({ message: e.message });
+  }
+});
+
 app.get('/api/bus', async (req, res) => {
   try {
     const r = await wipFetch('/business/api/v1/BusinessUnit/company/' + PROD.COMPANY_ID + '/business-units/services');
