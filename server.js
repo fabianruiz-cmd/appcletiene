@@ -369,10 +369,10 @@ app.delete('/wip/customers/:id', async (req, res) => {
 app.get('/wip/subscriptions/all', async (req, res) => {
   try {
     // 1. Obtener BUs
-    const buRes = await wipFetch('/business/api/v1/BusinessUnit/company/' + COMPANY_ID + '/business-units/services');
+    const buRes = await wipFetch('/business/api/v1/BusinessUnit/company/' + PROD.COMPANY_ID + '/business-units/services');
     const buList = (buRes.data.businessUnits || []).map(b => ({ id: b.id, name: b.name }));
 
-    // 2. Traer servicios de todas las BUs (page 1 y 2) para extraer documentos únicos
+    // 2. Traer servicios de todas las BUs para extraer documentos únicos
     const seen = new Set();
     const documentos = new Set();
     
@@ -382,7 +382,7 @@ app.get('/wip/subscriptions/all', async (req, res) => {
         pagePromesas.push(
           wipFetch('/service/api/v1/Service/search', 'POST', {
             pageSize: 50, page: page, sort: 'scheduledDate', sortDirection: 'Desc',
-            companyId: COMPANY_ID, userId: USER_ID, businessUnitId: bu.id, subject: ''
+            companyId: PROD.COMPANY_ID, userId: PROD.USER_ID, businessUnitId: bu.id, subject: ''
           }).then(r => {
             (r.data && r.data.data ? r.data.data : []).forEach(s => {
               if (s.customerDocument) documentos.add(s.customerDocument);
@@ -402,7 +402,7 @@ app.get('/wip/subscriptions/all', async (req, res) => {
     for (const doc of docArray) {
       for (const bu of buList) {
         subPromesas.push(
-          wipFetch('/Customer/api/v1/Customer/Subscription?companyId=' + COMPANY_ID + '&businessUnitId=' + bu.id + '&searchTerm=' + encodeURIComponent(doc))
+          wipFetch('/Customer/api/v1/Customer/Subscription?companyId=' + PROD.COMPANY_ID + '&businessUnitId=' + bu.id + '&searchTerm=' + encodeURIComponent(doc))
             .then(r => {
               const items = Array.isArray(r.data) ? r.data : (r.data && r.data.id ? [r.data] : []);
               items.forEach(s => {
