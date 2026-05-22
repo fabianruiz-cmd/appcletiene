@@ -392,7 +392,7 @@
         </div>
         <div class="form-row">
           <div class="form-group">
-            <label>Plan de Suscripción Activo</label>
+            <label>Tipo de Plan <span class="req">*</span></label>
             <select id="ag-plan" onchange="onPlanChange()">
               <option value="">Seleccione plan</option>
             </select>
@@ -526,7 +526,7 @@
         <div class="table-info" id="sub-info">Selecciona una unidad o busca un cliente.</div>
         <div class="table-wrap">
           <table>
-            <thead><tr><th>#</th><th>Nombre</th><th>Documento</th><th>Teléfono</th><th>Plan</th><th>Unidad</th><th>Estado</th></tr></thead>
+            <thead><tr><th>#</th><th>Nombre</th><th>Documento</th><th>Teléfono</th><th>Planes</th><th>Estado</th></tr></thead>
             <tbody id="sub-tbody"><tr><td colspan="7"><div class="empty-state"><p>Selecciona una unidad.</p></div></td></tr></tbody>
           </table>
         </div>
@@ -915,39 +915,36 @@ function accederSuscriptores() {
     return;
   }
   showPanel('suscriptores');
-  // Cargar BUs en el filtro de suscriptores
+  // Cargar planes en el filtro (agrupados por plan, no por BU)
   const buSel = document.getElementById('sub-bu');
-  buSel.innerHTML = '<option value="">Todas las Unidades</option>';
+  buSel.innerHTML = '<option value="">Todos los Planes</option>';
+  const planesVistos = new Set();
   businessUnits.forEach(bu => {
     const planInfo = PLAN_MAP[bu.id];
-    const label = planInfo ? planInfo.plan + ' — ' + bu.name : bu.name;
-    buSel.innerHTML += '<option value="' + bu.id + '">' + label + '</option>';
+    if (planInfo && !planesVistos.has(planInfo.plan)) {
+      planesVistos.add(planInfo.plan);
+      // Guardar todos los buIds de ese plan como valor
+      const buIds = businessUnits.filter(b => PLAN_MAP[b.id]?.plan === planInfo.plan).map(b => b.id).join(',');
+      buSel.innerHTML += '<option value="' + buIds + '">' + planInfo.plan + '</option>';
+    }
+    if (!planInfo) {
+      buSel.innerHTML += '<option value="' + bu.id + '">' + bu.name + '</option>';
+    }
   });
+  // Cargar todos automáticamente
+  cargarTodosSuscriptores();
 }
 
-async function buscarSuscriptores() {
-  const buId   = document.getElementById('sub-bu').value;
-  const search = document.getElementById('sub-search').value.trim();
-  const err    = document.getElementById('sub-err');
-  err.classList.remove('show');
-
-  if (!buId && !search) {
-    document.getElementById('sub-info').textContent = 'Selecciona una unidad o ingresa un término de búsqueda.';
-    return;
-  }
-
-  document.getElementById('sub-info').textContent = 'Buscando...';
+async function cargarTodosSuscriptores() {
+  document.getElementById('sub-info').textContent = 'Cargando todos los suscriptores...';
   document.getElementById('sub-tbody').innerHTML = '<tr><td colspan="7" style="text-align:center;padding:24px"><div class="loader" style="border-top-color:var(--primary)"></div></td></tr>';
-
   try {
-    // Buscar en BUs seleccionadas o en todas
-    const busABuscar = buId ? [{ id: buId }] : businessUnits;
-    const promesas = busABuscar.map(bu =>
-      fetch('/wip/subscriptions?searchTerm=' + encodeURIComponent(search) + '&businessUnitId=' + bu.id)
+    const promesas = businessUnits.map(bu =>
+      fetch('/wip/subscriptions?searchTerm=&businessUnitId=' + bu.id)
         .then(r => r.json())
         .then(data => {
           const items = Array.isArray(data) ? data : (data && data.id ? [data] : []);
-          return items.map(s => ({ ...s, buId: bu.id, buName: bu.name || businessUnits.find(x => x.id === bu.id)?.name || bu.id }));
+          return items.map(s => ({ ...s, buId: bu.id, buName: bu.name }));
         })
         .catch(() => [])
     );
@@ -958,32 +955,78 @@ async function buscarSuscriptores() {
       const key = s.id + s.buId;
       if (!seen.has(key)) { seen.add(key); subs.push(s); }
     });
-
+    window._todosSuscriptores = subs;
     renderSuscriptores(subs);
   } catch(e) {
-    err.textContent = 'Error: ' + e.message;
-    err.classList.add('show');
-    document.getElementById('sub-tbody').innerHTML = '';
+    document.getElementById('sub-err').textContent = 'Error: ' + e.message;
+    document.getElementById('sub-err').classList.add('show');
   }
 }
 
+async function buscarSuscriptores() {
+  const planBuIds = document.getElementById('sub-bu').value; // puede ser "id1,id2,id3"
+  const search    = document.getElementById('sub-search').value.trim().toLowerCase();
+  const err       = document.getElementById('sub-err');
+  err.classList.remove('show');
+
+  // Filtrar desde los datos ya cargados
+  let subs = window._todosSuscriptores || [];
+
+  // Filtrar por plan
+  if (planBuIds) {
+    const ids = planBuIds.split(',');
+    subs = subs.filter(s => ids.includes(s.buId));
+  }
+
+  // Filtrar por búsqueda
+  if (search) {
+    subs = subs.filter(s =>
+      (s.name && s.name.toLowerCase().includes(search)) ||
+      (s.documentId && s.documentId.includes(search)) ||
+      (s.phone && s.phone.includes(search))
+    );
+  }
+
+  renderSuscriptores(subs);
+}
+
 function renderSuscriptores(subs) {
-  document.getElementById('sub-info').textContent = subs.length + ' suscriptor(es) encontrado(s).';
-  if (!subs.length) {
-    document.getElementById('sub-tbody').innerHTML = '<tr><td colspan="7"><div class="empty-state"><p>No se encontraron suscriptores.</p></div></td></tr>';
+  // Deduplicar por documentId — agrupar planes por cliente
+  const clienteMap = new Map();
+  subs.forEach(s => {
+    const key = s.documentId || s.id;
+    if (!clienteMap.has(key)) {
+      clienteMap.set(key, { ...s, planes: [] });
+    }
+    const planInfo = PLAN_MAP[s.buId] || { plan: s.buName, color: '#64748b' };
+    const existing = clienteMap.get(key);
+    if (!existing.planes.find(p => p.plan === planInfo.plan)) {
+      existing.planes.push({ ...planInfo, buName: s.buName, valid: s.valid });
+    }
+  });
+
+  const clientes = Array.from(clienteMap.values());
+  document.getElementById('sub-info').textContent = clientes.length + ' suscriptor(es) encontrado(s).';
+
+  if (!clientes.length) {
+    document.getElementById('sub-tbody').innerHTML = '<tr><td colspan="6"><div class="empty-state"><p>No se encontraron suscriptores.</p></div></td></tr>';
     return;
   }
-  document.getElementById('sub-tbody').innerHTML = subs.map((s, i) => {
-    const planInfo = PLAN_MAP[s.buId] || { plan: s.buName, color: '#64748b' };
-    const valido = s.valid ? '<span class="badge badge-done">Activo</span>' : '<span class="badge badge-cancelled">Expirado</span>';
+
+  document.getElementById('sub-tbody').innerHTML = clientes.map((s, i) => {
+    const planesHtml = s.planes.map(p =>
+      '<span style="background:' + p.color + '22;color:' + p.color + ';padding:2px 8px;border-radius:20px;font-size:11px;font-weight:600;margin-right:4px">' + p.plan + '</span>'
+    ).join('');
+    const estadoHtml = s.planes.some(p => p.valid)
+      ? '<span class="badge badge-done">Activo</span>'
+      : '<span class="badge badge-cancelled">Expirado</span>';
     return '<tr>' +
       '<td style="color:var(--muted);font-size:12px">' + (i+1) + '</td>' +
       '<td style="font-weight:500">' + (s.name || '—') + '</td>' +
       '<td style="font-size:12px">' + (s.documentId || '—') + '</td>' +
       '<td style="font-size:12px">' + (s.phone || '—') + '</td>' +
-      '<td><span style="background:' + planInfo.color + '22;color:' + planInfo.color + ';padding:2px 8px;border-radius:20px;font-size:11px;font-weight:600">' + planInfo.plan + '</span></td>' +
-      '<td style="font-size:12px;color:var(--muted)">' + s.buName + '</td>' +
-      '<td>' + valido + '</td>' +
+      '<td>' + planesHtml + '</td>' +
+      '<td>' + estadoHtml + '</td>' +
     '</tr>';
   }).join('');
 }
