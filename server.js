@@ -358,6 +358,14 @@ app.delete('/wip/customers/:id', async (req, res) => {
 });
 
 // ── Health check ──────────────────────────────────────────────────────────────
+app.get('/api/bus', async (req, res) => {
+  try {
+    const r = await wipFetch('/business/api/v1/BusinessUnit/company/' + PROD.COMPANY_ID + '/business-units/services');
+    const bus = (r.data.businessUnits || []).map(b => ({ id: b.id, name: b.name, tipos: (b.serviceTypes||[]).map(s=>s.name) }));
+    res.json(bus);
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
 app.get('/api/health', function(req, res) {
   res.json({ status: 'ok', uptime: process.uptime(), env: ENV, prod_base: PROD.BASE, qa_base: QA.BASE });
 });
