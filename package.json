@@ -1,6 +1,6 @@
 {
   "name": "cltiene-auth",
-  "version": "3.0.0",
+  "version": "10.1.0",
   "description": "Panel de Gestión Operativa MULTISERVICIOS CL TIENE",
   "main": "server.js",
   "scripts": {
