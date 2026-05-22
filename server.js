@@ -43,8 +43,14 @@ app.get('/', (req, res) => {
   // Si no, redirigir al login
   res.redirect('/auth');
 });
-app.get('/wip-dashboard.html', (req, res) => res.sendFile(path.join(__dirname, 'wip-dashboard.html')));
-app.get('/auth',               (req, res) => res.sendFile(path.join(__dirname, 'cltiene-auth.html')));
+app.get('/wip-dashboard.html', (req, res) => {
+  res.set('Cache-Control', 'no-store, no-cache, must-revalidate');
+  res.sendFile(path.join(__dirname, 'wip-dashboard.html'));
+});
+app.get('/auth', (req, res) => {
+  res.set('Cache-Control', 'no-store, no-cache, must-revalidate');
+  res.sendFile(path.join(__dirname, 'cltiene-auth.html'));
+});
 app.get('/cltiene-auth.html',  (req, res) => res.sendFile(path.join(__dirname, 'cltiene-auth.html')));
 
 // ── Helper WIP ────────────────────────────────────────────────────────────────
