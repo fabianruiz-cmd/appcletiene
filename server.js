@@ -35,7 +35,14 @@ function getCfg(env) { return env === 'qa' ? QA : PROD; }
 app.use(express.json());
 
 // ── HTML Routes ───────────────────────────────────────────────────────────────
-app.get('/',                   (req, res) => res.sendFile(path.join(__dirname, 'wip-dashboard.html')));
+app.get('/', (req, res) => {
+  // Si viene con cédula en URL, mostrar dashboard
+  if (req.query.cedula) {
+    return res.sendFile(path.join(__dirname, 'wip-dashboard.html'));
+  }
+  // Si no, redirigir al login
+  res.redirect('/auth');
+});
 app.get('/wip-dashboard.html', (req, res) => res.sendFile(path.join(__dirname, 'wip-dashboard.html')));
 app.get('/auth',               (req, res) => res.sendFile(path.join(__dirname, 'cltiene-auth.html')));
 app.get('/cltiene-auth.html',  (req, res) => res.sendFile(path.join(__dirname, 'cltiene-auth.html')));

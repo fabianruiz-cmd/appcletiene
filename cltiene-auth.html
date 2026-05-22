@@ -136,9 +136,7 @@ async function entrar() {
 
     if (data.success) {
       // Guardar cédula en sessionStorage y redirigir
-      sessionStorage.setItem('cedula', doc);
-      sessionStorage.setItem('nombre', data.user?.nombre || '');
-      window.location.href = '/';
+      window.location.href = '/?cedula=' + encodeURIComponent(doc) + '&nombre=' + encodeURIComponent(data.user?.nombre || '');
     } else {
       err.textContent = data.message || 'Documento no encontrado en el sistema.';
       err.classList.add('show');

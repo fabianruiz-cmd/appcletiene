@@ -506,24 +506,35 @@
 
 <script>
 // ── Sesión ──────────────────────────────────────────────
-const cedula = sessionStorage.getItem('cedula');
-const nombre = sessionStorage.getItem('nombre');
+const urlParams = new URLSearchParams(window.location.search);
+let cedula = urlParams.get('cedula') || sessionStorage.getItem('cedula') || '';
+let nombre = urlParams.get('nombre') || sessionStorage.getItem('nombre') || '';
+
+// Guardar en sessionStorage
+if (cedula) {
+  sessionStorage.setItem('cedula', cedula);
+  sessionStorage.setItem('nombre', nombre);
+  // Limpiar URL
+  window.history.replaceState({}, '', '/');
+}
 
 // Si no hay sesión, redirigir al login
 if (!cedula) { window.location.href = '/auth'; }
 
-// Mostrar nombre en topbar
+// Al cargar la página
 window.addEventListener('DOMContentLoaded', function() {
+  // Mostrar nombre
   const el = document.getElementById('user-name-top');
-  if (el) el.textContent = nombre || cedula;
-  // Buscar automáticamente con la cédula del usuario
-  document.getElementById('f-search').value = cedula;
+  if (el) el.textContent = nombre || ('CC ' + cedula);
+  // Poner cédula en buscador y buscar
+  const searchInput = document.getElementById('f-search');
+  if (searchInput) searchInput.value = cedula;
+  console.log('[SESION] Cédula:', cedula);
   buscarServicios();
 });
 
 function cerrarSesion() {
-  sessionStorage.removeItem('cedula');
-  sessionStorage.removeItem('nombre');
+  sessionStorage.clear();
   window.location.href = '/auth';
 }
 // ────────────────────────────────────────────────────────
@@ -844,36 +855,41 @@ window.addEventListener('DOMContentLoaded', () => {
   .nav-item { justify-content: center; padding: 12px; }
   .main { margin-left: 56px; }
   .topbar { padding: 10px 16px; }
-  .content { padding: 16px; }
+  .content { padding: 12px; }
   .panel-header { flex-direction: column; align-items: flex-start; gap: 10px; }
   .panel-header .btn { width: 100%; justify-content: center; }
   .filters-bar { flex-direction: column; gap: 8px; }
-  .filters-bar select, .filters-bar input { width: 100%; }
-  .filter-group { width: 100%; }
-  .filter-group select { flex: 1; }
-  .form-row { flex-direction: column; }
+  .filters-bar select, .filters-bar input { width: 100% !important; }
+  .filter-group { width: 100%; flex-direction: column; }
+  .filter-group select { flex: 1; width: 100%; }
+  .form-row { flex-direction: column; gap: 10px; }
   .form-group { min-width: unset; width: 100%; }
+  .form-group select, .form-group input { width: 100% !important; font-size: 16px !important; }
   .input-with-btn { flex-wrap: wrap; }
   .input-with-btn input { min-width: 0; }
   table { font-size: 12px; }
   thead th, tbody td { padding: 8px 10px; }
-  /* Ocultar columnas menos importantes en móvil */
   table th:nth-child(1), table td:nth-child(1),
   table th:nth-child(3), table td:nth-child(3),
   table th:nth-child(5), table td:nth-child(5),
   table th:nth-child(6), table td:nth-child(6) { display: none; }
-  /* Grid destino/origen en columna */
   .form-card [style*="grid-template-columns:1fr 1fr"] {
-    display: flex !important; flex-direction: column !important;
+    display: flex !important; flex-direction: column !important; gap: 16px !important;
   }
   .form-actions { flex-direction: column; }
   .form-actions .btn { width: 100%; justify-content: center; }
   .stats { grid-template-columns: 1fr 1fr !important; }
+  /* Fix dropdown en móvil */
+  select { -webkit-appearance: auto; appearance: auto; background: var(--surface); color: var(--text); }
+  .toggle-row { flex-wrap: wrap; gap: 10px; }
 }
 
 @media (max-width: 500px) {
+  .sidebar { width: 48px; }
   .topbar-title strong { font-size: 13px; }
   .panel-header h1 { font-size: 18px; }
   table th:nth-child(7), table td:nth-child(7) { display: none; }
+  .content { padding: 8px; }
+  .form-card { padding: 14px 12px; }
 }
 </style>
