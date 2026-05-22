@@ -1,4 +1,4 @@
- <!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="es">
 <head>
   <meta charset="UTF-8"/>
@@ -677,14 +677,28 @@ async function consultarCliente() {
       planSel.innerHTML = '<option value="">Sin plan activo</option>';
     }
 
-    // Cargar todas las BUs con nombres amigables
+    // Cargar solo las BUs del cliente (sus suscripciones)
     const buSel = document.getElementById('ag-bu');
     buSel.innerHTML = '<option value="">Seleccione una unidad...</option>';
-    businessUnits.forEach(bu => {
-      const planInfo = PLAN_MAP[bu.id];
-      const label = planInfo ? planInfo.plan + ' — ' + bu.name : bu.name;
-      buSel.innerHTML += '<option value="' + bu.id + '">' + label + '</option>';
-    });
+    if (clientes.length > 0) {
+      // Mostrar solo BUs donde tiene suscripción
+      const buIds = [...new Set(clientes.map(c => c.buId))];
+      buIds.forEach(buId => {
+        const bu = businessUnits.find(b => b.id === buId);
+        if (bu) {
+          const planInfo = PLAN_MAP[bu.id];
+          const label = planInfo ? planInfo.plan + ' — ' + bu.name : bu.name;
+          buSel.innerHTML += '<option value="' + bu.id + '">' + label + '</option>';
+        }
+      });
+    } else {
+      // Sin suscripción — mostrar todas
+      businessUnits.forEach(bu => {
+        const planInfo = PLAN_MAP[bu.id];
+        const label = planInfo ? planInfo.plan + ' — ' + bu.name : bu.name;
+        buSel.innerHTML += '<option value="' + bu.id + '">' + label + '</option>';
+      });
+    }
 
   } catch(e) {
     alert('Error al consultar: ' + e.message);
