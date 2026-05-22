@@ -365,23 +365,44 @@ app.delete('/wip/customers/:id', async (req, res) => {
 
 // ── Health check ──────────────────────────────────────────────────────────────
 
-// Traer todos los suscriptores por BU con múltiples términos
+// Traer todos los suscriptores extrayendo documentos únicos de los servicios
 app.get('/wip/subscriptions/all', async (req, res) => {
   try {
+    // 1. Obtener BUs
     const buRes = await wipFetch('/business/api/v1/BusinessUnit/company/' + COMPANY_ID + '/business-units/services');
     const buList = (buRes.data.businessUnits || []).map(b => ({ id: b.id, name: b.name }));
 
-    // Términos para barrer todos los registros — letras y números comunes en nombres colombianos
-    const terminos = ['a','e','i','o','u','r','s','n','l','c','m','d','p','g','b','f','j','t','1','2','3','4','5','6','7','8','9','0'];
+    // 2. Traer servicios de todas las BUs (page 1 y 2) para extraer documentos únicos
     const seen = new Set();
-    const subs = [];
-
-    // Ejecutar todas las búsquedas en paralelo
-    const promesas = [];
+    const documentos = new Set();
+    
+    const pagePromesas = [];
     for (const bu of buList) {
-      for (const term of terminos) {
-        promesas.push(
-          wipFetch('/Customer/api/v1/Customer/Subscription?companyId=' + COMPANY_ID + '&businessUnitId=' + bu.id + '&searchTerm=' + encodeURIComponent(term))
+      for (const page of [1, 2, 3, 4, 5]) {
+        pagePromesas.push(
+          wipFetch('/service/api/v1/Service/search', 'POST', {
+            pageSize: 50, page: page, sort: 'scheduledDate', sortDirection: 'Desc',
+            companyId: COMPANY_ID, userId: USER_ID, businessUnitId: bu.id, subject: ''
+          }).then(r => {
+            (r.data && r.data.data ? r.data.data : []).forEach(s => {
+              if (s.customerDocument) documentos.add(s.customerDocument);
+            });
+          }).catch(() => {})
+        );
+      }
+    }
+    await Promise.all(pagePromesas);
+    console.log('[SUBS/ALL] Documentos únicos encontrados:', documentos.size);
+
+    // 3. Para cada documento único, buscar sus suscripciones
+    const subs = [];
+    const docArray = Array.from(documentos).slice(0, 500);
+    
+    const subPromesas = [];
+    for (const doc of docArray) {
+      for (const bu of buList) {
+        subPromesas.push(
+          wipFetch('/Customer/api/v1/Customer/Subscription?companyId=' + COMPANY_ID + '&businessUnitId=' + bu.id + '&searchTerm=' + encodeURIComponent(doc))
             .then(r => {
               const items = Array.isArray(r.data) ? r.data : (r.data && r.data.id ? [r.data] : []);
               items.forEach(s => {
@@ -395,9 +416,9 @@ app.get('/wip/subscriptions/all', async (req, res) => {
         );
       }
     }
-
-    await Promise.all(promesas);
-    console.log('[SUBS/ALL] Total encontrados:', subs.length);
+    await Promise.all(subPromesas);
+    
+    console.log('[SUBS/ALL] Total suscriptores:', subs.length);
     res.json({ total: subs.length, data: subs });
   } catch(e) {
     console.error('[SUBS/ALL]', e.message);
