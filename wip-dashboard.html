@@ -653,15 +653,15 @@ async function consultarCliente() {
       document.getElementById('client-box').className = 'client-box show';
       document.getElementById('ag-clientname').value = clienteData.name || '';
 
-      // Llenar planes del cliente — usar nombres del sitio web
+      // Llenar planes del cliente — un plan por BU única
       const planSel = document.getElementById('ag-plan');
       planSel.innerHTML = '<option value="">Seleccione plan</option>';
-      const planesVistos = new Set();
+      const busVistas = new Set();
       clientes.forEach(c => {
-        const planInfo = PLAN_MAP[c.buId] || { plan: c.buName, color: '#64748b' };
-        if (!planesVistos.has(planInfo.plan)) {
-          planesVistos.add(planInfo.plan);
-          planSel.innerHTML += '<option value="' + c.id + '|' + c.buId + '">' + planInfo.plan + '</option>';
+        if (!busVistas.has(c.buId)) {
+          busVistas.add(c.buId);
+          const planInfo = PLAN_MAP[c.buId] || { plan: c.buName, color: '#64748b' };
+          planSel.innerHTML += '<option value="' + c.id + '|' + c.buId + '">' + planInfo.plan + ' — ' + c.buName + '</option>';
         }
       });
     } else {
@@ -935,12 +935,13 @@ function accederSuscriptores() {
   cargarTodosSuscriptores();
 }
 
+
 async function cargarTodosSuscriptores() {
   document.getElementById('sub-info').textContent = 'Cargando todos los suscriptores...';
   document.getElementById('sub-tbody').innerHTML = '<tr><td colspan="7" style="text-align:center;padding:24px"><div class="loader" style="border-top-color:var(--primary)"></div></td></tr>';
   try {
     const promesas = businessUnits.map(bu =>
-      fetch('/wip/subscriptions?searchTerm=&businessUnitId=' + bu.id)
+      fetch('/wip/subscriptions?searchTerm=%20&businessUnitId=' + bu.id)
         .then(r => r.json())
         .then(data => {
           const items = Array.isArray(data) ? data : (data && data.id ? [data] : []);
