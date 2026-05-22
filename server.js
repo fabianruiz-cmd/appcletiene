@@ -32,6 +32,10 @@ const WA_TOKEN = process.env.WHAPI_TOKEN || 'WwW3UAz2x6iJ0nasEd7ar5WFoVsxnGpc';
 
 function getCfg(env) { return env === 'qa' ? QA : PROD; }
 
+// Aliases para compatibilidad
+const COMPANY_ID = PROD.COMPANY_ID;
+const USER_ID    = PROD.USER_ID;
+
 app.use(express.json());
 
 // ── HTML Routes ───────────────────────────────────────────────────────────────
