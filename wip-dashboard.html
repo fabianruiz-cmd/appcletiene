@@ -938,25 +938,32 @@ function accederSuscriptores() {
 
 async function cargarTodosSuscriptores() {
   document.getElementById('sub-info').textContent = 'Cargando todos los suscriptores...';
-  document.getElementById('sub-tbody').innerHTML = '<tr><td colspan="7" style="text-align:center;padding:24px"><div class="loader" style="border-top-color:var(--primary)"></div></td></tr>';
+  document.getElementById('sub-tbody').innerHTML = '<tr><td colspan="6" style="text-align:center;padding:24px"><div class="loader" style="border-top-color:var(--primary)"></div></td></tr>';
   try {
-    const promesas = businessUnits.map(bu =>
-      fetch('/wip/subscriptions?searchTerm=%20&businessUnitId=' + bu.id)
-        .then(r => r.json())
-        .then(data => {
-          const items = Array.isArray(data) ? data : (data && data.id ? [data] : []);
-          return items.map(s => ({ ...s, buId: bu.id, buName: bu.name }));
-        })
-        .catch(() => [])
-    );
-    const resultados = await Promise.all(promesas);
+    // Buscar con letras comunes para traer todos los suscriptores
+    const terminos = ['a', 'e', 'i', 'o', 'u', '1', '2', '3'];
     const seen = new Set();
     const subs = [];
-    resultados.flat().forEach(s => {
-      const key = s.id + s.buId;
-      if (!seen.has(key)) { seen.add(key); subs.push(s); }
-    });
+
+    for (const bu of businessUnits) {
+      for (const term of terminos) {
+        try {
+          const r = await fetch('/wip/subscriptions?searchTerm=' + encodeURIComponent(term) + '&businessUnitId=' + bu.id);
+          const data = await r.json();
+          const items = Array.isArray(data) ? data : (data && data.id ? [data] : []);
+          items.forEach(s => {
+            const key = (s.documentId || s.id) + bu.id;
+            if (!seen.has(key)) {
+              seen.add(key);
+              subs.push({ ...s, buId: bu.id, buName: bu.name });
+            }
+          });
+        } catch(e) {}
+      }
+    }
+
     window._todosSuscriptores = subs;
+    document.getElementById('sub-info').textContent = subs.length + ' suscriptor(es) encontrado(s).';
     renderSuscriptores(subs);
   } catch(e) {
     document.getElementById('sub-err').textContent = 'Error: ' + e.message;
