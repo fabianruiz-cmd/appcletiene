@@ -238,6 +238,10 @@
       <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
       <span>Solicitud de Servicio</span>
     </div>
+    <div class="nav-item" id="nav-suscriptores" onclick="accederSuscriptores()">
+      <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>
+      <span>Suscriptores</span>
+    </div>
   </nav>
 </aside>
 
@@ -564,7 +568,7 @@ let tiposServicio = {};  // { buId: [tipos] }
 
 // ════ NAVEGACIÓN ════
 function showPanel(name) {
-  ['servicios','agendar'].forEach(p => {
+  ['servicios','agendar','suscriptores'].forEach(p => {
     document.getElementById('panel-'+p).classList.toggle('active', p===name);
     document.getElementById('nav-'+p)?.classList.toggle('active', p===name);
   });
@@ -857,6 +861,88 @@ function renderTabla(rows, total) {
       <td style="font-size:12px">${fecha}</td>
       <td><span class="badge ${cls}">${label}</span></td>
     </tr>`;
+  }).join('');
+}
+
+// ════ ADMIN — SUSCRIPTORES ════
+const ADMIN_CEDULA = '80799915';
+
+function accederSuscriptores() {
+  if (cedula !== ADMIN_CEDULA) {
+    alert('⛔ Acceso restringido. Solo el administrador puede ver esta sección.');
+    return;
+  }
+  showPanel('suscriptores');
+  // Cargar BUs en el filtro de suscriptores
+  const buSel = document.getElementById('sub-bu');
+  buSel.innerHTML = '<option value="">Todas las Unidades</option>';
+  businessUnits.forEach(bu => {
+    const planInfo = PLAN_MAP[bu.id];
+    const label = planInfo ? planInfo.plan + ' — ' + bu.name : bu.name;
+    buSel.innerHTML += '<option value="' + bu.id + '">' + label + '</option>';
+  });
+}
+
+async function buscarSuscriptores() {
+  const buId   = document.getElementById('sub-bu').value;
+  const search = document.getElementById('sub-search').value.trim();
+  const err    = document.getElementById('sub-err');
+  err.classList.remove('show');
+
+  if (!buId && !search) {
+    document.getElementById('sub-info').textContent = 'Selecciona una unidad o ingresa un término de búsqueda.';
+    return;
+  }
+
+  document.getElementById('sub-info').textContent = 'Buscando...';
+  document.getElementById('sub-tbody').innerHTML = '<tr><td colspan="7" style="text-align:center;padding:24px"><div class="loader" style="border-top-color:var(--primary)"></div></td></tr>';
+
+  try {
+    // Buscar en BUs seleccionadas o en todas
+    const busABuscar = buId ? [{ id: buId }] : businessUnits;
+    const promesas = busABuscar.map(bu =>
+      fetch('/wip/subscriptions?searchTerm=' + encodeURIComponent(search) + '&businessUnitId=' + bu.id)
+        .then(r => r.json())
+        .then(data => {
+          const items = Array.isArray(data) ? data : (data && data.id ? [data] : []);
+          return items.map(s => ({ ...s, buId: bu.id, buName: bu.name || businessUnits.find(x => x.id === bu.id)?.name || bu.id }));
+        })
+        .catch(() => [])
+    );
+    const resultados = await Promise.all(promesas);
+    const seen = new Set();
+    const subs = [];
+    resultados.flat().forEach(s => {
+      const key = s.id + s.buId;
+      if (!seen.has(key)) { seen.add(key); subs.push(s); }
+    });
+
+    renderSuscriptores(subs);
+  } catch(e) {
+    err.textContent = 'Error: ' + e.message;
+    err.classList.add('show');
+    document.getElementById('sub-tbody').innerHTML = '';
+  }
+}
+
+function renderSuscriptores(subs) {
+  document.getElementById('sub-info').textContent = subs.length + ' suscriptor(es) encontrado(s).';
+  if (!subs.length) {
+    document.getElementById('sub-tbody').innerHTML = '<tr><td colspan="7"><div class="empty-state"><p>No se encontraron suscriptores.</p></div></td></tr>';
+    return;
+  }
+  document.getElementById('sub-tbody').innerHTML = subs.map((s, i) => {
+    const planInfo = PLAN_MAP[s.buId] || { plan: s.buName, color: '#64748b' };
+    const valido = s.valid ? '<span class="badge badge-done">Activo</span>' : '<span class="badge badge-cancelled">Expirado</span>';
+    return '<tr>' +
+      '<td style="color:var(--muted);font-size:12px">' + (i+1) + '</td>' +
+      '<td style="font-weight:500">' + (s.name || '—') + '</td>' +
+      '<td style="font-size:12px">' + (s.documentId || '—') + '</td>' +
+      '<td style="font-size:12px">' + (s.phone || '—') + '</td>' +
+      '<td><span style="background:' + planInfo.color + '22;color:' + planInfo.color + ';padding:2px 8px;border-radius:20px;font-size:11px;font-weight:600">' + planInfo.plan + '</span></td>' +
+      '<td style="font-size:12px;color:var(--muted)">' + s.buName + '</td>' +
+      '<td>' + valido + '</td>' +
+    '</tr>';
   }).join('');
 }
 
