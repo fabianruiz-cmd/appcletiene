@@ -222,11 +222,15 @@
     /* Client info box */
     .client-box {
       background: var(--primary-light); border: 1px solid var(--primary-mid);
-      border-radius: 8px; padding: 10px 14px; margin-top: 8px; display: none;
+      border-radius: 8px; padding: 12px 14px; margin-top: 8px; display: none;
     }
     .client-box.show { display: block; }
     .client-box strong { color: var(--primary); font-size: 14px; }
-    .client-box p { font-size: 12px; color: var(--muted); margin-top: 2px; }
+    .client-box p { font-size: 12px; color: var(--muted); margin-top: 4px; }
+    .plan-badges { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+    .plan-badge {
+      padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 600;
+    }
 
     @media (max-width: 768px) {
       .sidebar { width: 56px; }
@@ -410,7 +414,10 @@
         <div class="form-row">
           <div class="form-group">
             <label>Tipo de Plan <span class="req">*</span></label>
-            <select id="ag-plan" onchange="onPlanChange()">
+            <div id="ag-plan-badges" class="plan-badges" style="min-height:36px;align-items:center">
+              <span style="color:var(--muted);font-size:13px">Consulta una cédula para ver los planes</span>
+            </div>
+            <select id="ag-plan" onchange="onPlanChange()" style="margin-top:8px">
               <option value="">Seleccione plan</option>
             </select>
           </div>
@@ -724,18 +731,51 @@ async function consultarCliente() {
       document.getElementById('client-box').className = 'client-box show';
       document.getElementById('ag-clientname').value = clienteData.name || '';
 
-      // Llenar planes del cliente — un plan por BU única (activos primero)
+      // Llenar planes del cliente — badges visuales + select
       const planSel = document.getElementById('ag-plan');
+      const planBadges = document.getElementById('ag-plan-badges');
       planSel.innerHTML = '<option value="">Seleccione plan</option>';
+      planBadges.innerHTML = '';
+
       const busVistas = new Set();
-      // Ordenar: activos primero
+      const planesMap = new Map(); // plan → primer buId
       const clientesOrdenados = [...clientes].sort((a, b) => (b.valid ? 1 : 0) - (a.valid ? 1 : 0));
-      clientesOrdenados.forEach(c => {
-        if (!busVistas.has(c.buId)) {
-          busVistas.add(c.buId);
-          const planInfo = PLAN_MAP[c.buId] || { plan: c.buName, color: '#64748b' };
-          const estado = c.valid ? '' : ' (Expirado)';
-          planSel.innerHTML += '<option value="' + c.id + '|' + c.buId + '">' + planInfo.plan + ' — ' + c.buName + estado + '</option>';
+
+      clientesOrdenados.forEach(cli => {
+        if (!busVistas.has(cli.buId)) {
+          busVistas.add(cli.buId);
+          const planInfo = PLAN_MAP[cli.buId] || { plan: cli.buName, color: '#64748b' };
+          const estado = cli.valid ? '' : ' (Expirado)';
+
+          // Agregar al select
+          planSel.innerHTML += '<option value="' + cli.id + '|' + cli.buId + '">' + planInfo.plan + ' — ' + cli.buName + estado + '</option>';
+
+          // Agregar badge visual si es un plan nuevo
+          if (!planesMap.has(planInfo.plan)) {
+            planesMap.set(planInfo.plan, cli.buId);
+            const badge = document.createElement('span');
+            badge.className = 'plan-badge';
+            badge.style.background = planInfo.color + '22';
+            badge.style.color = planInfo.color;
+            badge.style.border = '1px solid ' + planInfo.color + '44';
+            badge.style.cursor = 'pointer';
+            badge.textContent = planInfo.plan + (cli.valid ? '' : ' ⚠️');
+            badge.title = 'Clic para seleccionar';
+            badge.onclick = function() {
+              // Seleccionar la primera opción de este plan en el select
+              for (let i = 0; i < planSel.options.length; i++) {
+                if (planSel.options[i].text.startsWith(planInfo.plan)) {
+                  planSel.selectedIndex = i;
+                  onPlanChange();
+                  // Resaltar badge seleccionado
+                  document.querySelectorAll('.plan-badge').forEach(b => b.style.fontWeight = '600');
+                  badge.style.outline = '2px solid ' + planInfo.color;
+                  break;
+                }
+              }
+            };
+            planBadges.appendChild(badge);
+          }
         }
       });
     } else {
@@ -787,6 +827,7 @@ function resetClienteInfo() {
   document.getElementById('client-box').className = 'client-box';
   document.getElementById('ag-clientname').value = '';
   document.getElementById('ag-plan').innerHTML = '<option value="">Seleccione plan</option>';
+  document.getElementById('ag-plan-badges').innerHTML = '<span style="color:var(--muted);font-size:13px">Consulta una cédula para ver los planes</span>';
   document.getElementById('ag-bu').innerHTML = '<option value="">Seleccione una unidad...</option>';
   document.getElementById('ag-tipo').innerHTML = '<option value="">Seleccione el tipo...</option>';
 }
