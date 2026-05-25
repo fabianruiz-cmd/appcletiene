@@ -113,63 +113,29 @@ app.post('/api/auth/validate-document', async (req, res) => {
   if (!doc) return res.status(400).json({ success: false, message: 'Documento requerido' });
   try {
     const cfg = getCfg(env);
-
-    // Buscar en servicios (más confiable que suscripciones)
     const buRes = await wipFetch('/business/api/v1/BusinessUnit/company/' + cfg.COMPANY_ID + '/business-units/services', 'GET', null, env);
-    const buList = (buRes.data.businessUnits || []).map(b => ({ id: b.id, name: b.name }));
-
-    // Buscar servicios de este documento en paralelo
-    const promesas = buList.map(bu =>
-      wipFetch('/service/api/v1/Service/search', 'POST', {
-        pageSize: 1, page: 1,
-        sort: 'scheduledDate', sortDirection: 'Desc',
-        companyId: cfg.COMPANY_ID, userId: cfg.USER_ID,
-        businessUnitId: bu.id, subject: doc
-      }, env).then(r => r.data && r.data.totalRows > 0 ? r.data.data[0] : null)
-        .catch(() => null)
-    );
-
-    const resultados = await Promise.all(promesas);
-    const encontrado = resultados.find(r => r !== null);
-
-    if (encontrado) {
-      return res.json({
-        success: true,
-        user: {
-          nombre: encontrado.finalClientName || encontrado.userName || doc,
-          documento: doc
-        }
-      });
-    }
-
-    // Si no tiene servicios, intentar con suscripciones
-    const subPromesas = buList.map(bu => {
-      const nodeFetch = require ? null : null;
-      return wipFetch('/Customer/api/v1/Customer/Subscription?companyId=' + cfg.COMPANY_ID + '&businessUnitId=' + bu.id + '&searchTerm=' + encodeURIComponent(doc), 'GET', null, env)
-        .then(r => Array.isArray(r.data) && r.data.length > 0 ? r.data[0] : null)
-        .catch(() => null);
+    const buIds = (buRes.data.businessUnits || []).map(function(b) { return b.id; });
+    const nodeFetch = (await import('node-fetch')).default;
+    const promesas = buIds.map(function(buId) {
+      return nodeFetch(cfg.BASE + '/Customer/api/v1/Customer/Subscription?companyId=' + cfg.COMPANY_ID + '&businessUnitId=' + buId + '&searchTerm=' + encodeURIComponent(doc), {
+        headers: { 'Authorization': cfg.KEY, 'Content-Type': 'application/json' }
+      }).then(function(r) { return r.json(); }).catch(function() { return null; });
     });
-
-    const subResultados = await Promise.all(subPromesas);
-    const subEncontrado = subResultados.find(r => r !== null);
-
-    if (subEncontrado) {
-      return res.json({
-        success: true,
-        user: {
-          nombre: subEncontrado.name || doc,
-          documento: doc
-        }
-      });
-    }
-
-    return res.json({ success: false, message: 'Documento no encontrado en el sistema.' });
+    const resultados = await Promise.all(promesas);
+    const clientes = [];
+    resultados.forEach(function(r) {
+      const items = Array.isArray(r) ? r : (r && r.id ? [r] : []);
+      items.forEach(function(c) { if (!clientes.find(function(x) { return x.id === c.id; })) clientes.push(c); });
+    });
+    if (!clientes.length) return res.status(404).json({ success: false, message: 'Documento no encontrado en el sistema.' });
+    const cliente = clientes[0];
+    const tel = cliente.phone || '';
+    const masked = tel ? tel.replace(/\d(?=\d{4})/g, '*') : null;
+    res.json({ success: true, user: { nombre: cliente.name, telefono: masked, tieneWhatsApp: !!tel } });
   } catch(e) {
-    console.error('[AUTH]', e.message);
-    return res.status(500).json({ success: false, message: 'Error de conexión. Intenta de nuevo.' });
+    res.status(500).json({ success: false, message: e.message });
   }
 });
-;
 
 app.post('/api/auth/send-code', async (req, res) => {
   const doc = req.body.documento;
@@ -413,47 +379,53 @@ app.get('/wip/subscriptions/all', async (req, res) => {
     const buList = (buRes.data.businessUnits || []).map(b => ({ id: b.id, name: b.name }));
     console.log('[SUBS/ALL] BUs:', buList.length);
 
-    // 2. Buscar suscriptores con apellidos colombianos más comunes
-    const terminos = [
-      'Rodriguez','Garcia','Martinez','Lopez','Gomez','Hernandez','Perez','Ramirez',
-      'Torres','Flores','Vargas','Moreno','Jimenez','Ruiz','Castro','Romero',
-      'Suarez','Diaz','Reyes','Morales','Ortiz','Gutierrez','Chavez','Ramos',
-      'Gonzalez','Sanchez','Medina','Herrera','Cardona','Mendez','Rojas','Cruz',
-      'Guerrero','Mendoza','Rios','Salazar','Molina','Aguilar','Navarro','Vega',
-      'Pena','Soto','Castillo','Silva','Alvarez','Mora','Campos','Acosta',
-      'Valencia','Ospina','Munoz','Parra','Rincon','Cano','Barrera','Bermudez',
-      'Pineda','Zapata','Mejia','Leon','Montoya','Salcedo','Avila','Guzman',
-      'Delgado','Fuentes','Escobar','Hurtado','Correa','Arango','Caicedo','Marin',
-      'Trujillo','Velez','Arenas','Bernal','Osorio','Arias','Londono','Paez',
-      'Galindo','Gamboa','Sepulveda','Valenzuela','Cubillos','Quintero','Pedraza',
-      'Carvajal','Lozano','Vergara','Burgos','Serrano','Duran','Nieto','Prieto',
-      'Guerrero','Pacheco','Alvarado','Sandoval','Pinzon','Caballero','Becerra',
-      'Forero','Coronado','Fonseca','Salamanca','Garzon','Bohorquez','Naranjo',
-      'Palacios','Villamizar','Angulo','Tovar','Figueroa','Porras','Rendon',
-      'Orjuela','Valbuena','Amaya','Ceron','Lizcano','Cifuentes','Zambrano',
-      'Quijano','Meza','Bautista','Florez','Giraldo','Penagos','Toro','Arbelaez'
-    ];
+    // 2. Extraer documentos únicos buscando servicios por BU (mismo patrón que funciona)
+    const documentos = new Set();
+    const servicePromesas = [];
 
-    const seen = new Set();
-    const subs = [];
-
-    const promesas = [];
     for (const bu of buList) {
-      for (const term of terminos) {
-        promesas.push(
-          wipFetch('/Customer/api/v1/Customer/Subscription?companyId=' + cfg.COMPANY_ID + '&businessUnitId=' + bu.id + '&searchTerm=' + encodeURIComponent(term), 'GET', null, 'prod')
-            .then(r => {
-              const items = Array.isArray(r.data) ? r.data : (r.data && r.data.id ? [r.data] : []);
-              items.forEach(s => {
-                const key = (s.documentId || s.id) + bu.id;
-                if (!seen.has(key)) { seen.add(key); subs.push({ ...s, buId: bu.id, buName: bu.name }); }
-              });
-            }).catch(() => {})
+      for (let page = 1; page <= 15; page++) {
+        servicePromesas.push(
+          wipFetch('/service/api/v1/Service/search', 'POST', {
+            pageSize: 50,
+            page: page,
+            sort: 'scheduledDate',
+            sortDirection: 'Desc',
+            companyId: cfg.COMPANY_ID,
+            userId: cfg.USER_ID,
+            businessUnitId: bu.id,
+            subject: ''
+          }, 'prod').then(r => {
+            const rows = (r.data && r.data.data) ? r.data.data : [];
+            rows.forEach(s => { if (s.customerDocument) documentos.add(s.customerDocument.trim()); });
+            return rows.length;
+          }).catch(() => 0)
         );
       }
     }
 
-    await Promise.all(promesas);
+    await Promise.all(servicePromesas);
+    console.log('[SUBS/ALL] Documentos únicos extraídos:', documentos.size);
+
+    // 3. Para cada documento, buscar suscripciones en todas las BUs en paralelo
+    const seen = new Set();
+    const subs = [];
+    const docArray = Array.from(documentos);
+
+    const subPromesas = docArray.flatMap(doc =>
+      buList.map(bu =>
+        wipFetch('/Customer/api/v1/Customer/Subscription?companyId=' + cfg.COMPANY_ID + '&businessUnitId=' + bu.id + '&searchTerm=' + encodeURIComponent(doc), 'GET', null, 'prod')
+          .then(r => {
+            const items = Array.isArray(r.data) ? r.data : (r.data && r.data.id ? [r.data] : []);
+            items.forEach(s => {
+              const key = (s.documentId || s.id) + bu.id;
+              if (!seen.has(key)) { seen.add(key); subs.push({ ...s, buId: bu.id, buName: bu.name }); }
+            });
+          }).catch(() => {})
+      )
+    );
+
+    await Promise.all(subPromesas);
     console.log('[SUBS/ALL] Total suscriptores:', subs.length);
     res.json({ total: subs.length, data: subs });
 
@@ -473,6 +445,26 @@ app.get('/api/bus', async (req, res) => {
 
 app.get('/api/health', function(req, res) {
   res.json({ status: 'ok', uptime: process.uptime(), env: ENV, prod_base: PROD.BASE, qa_base: QA.BASE });
+});
+
+// ── Diagnóstico: ver suscripciones de un documento en TODAS las BUs ──────────
+app.get('/api/diag/customer/:doc', async (req, res) => {
+  try {
+    const doc = req.params.doc;
+    const buRes = await wipFetch('/business/api/v1/BusinessUnit/company/' + PROD.COMPANY_ID + '/business-units/services', 'GET', null, 'prod');
+    const bus = buRes.data.businessUnits || [];
+    const nodeFetch = (await import('node-fetch')).default;
+    const resultados = await Promise.all(bus.map(bu =>
+      nodeFetch(PROD.BASE + '/Customer/api/v1/Customer/Subscription?companyId=' + PROD.COMPANY_ID + '&businessUnitId=' + bu.id + '&searchTerm=' + encodeURIComponent(doc), {
+        headers: { 'Authorization': PROD.KEY, 'Content-Type': 'application/json' }
+      }).then(r => r.json()).then(data => ({
+        buId: bu.id, buName: bu.name,
+        resultado: Array.isArray(data) ? data : (data && data.id ? [data] : []),
+        raw: data
+      })).catch(e => ({ buId: bu.id, buName: bu.name, error: e.message }))
+    ));
+    res.json({ documento: doc, total_bus: bus.length, resultados });
+  } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
 app.listen(PORT, '0.0.0.0', function() {
