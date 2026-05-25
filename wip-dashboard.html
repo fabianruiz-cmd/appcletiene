@@ -24,6 +24,22 @@
       --error: #ef4444;
       --pending: #f59e0b;
       --sidebar: #0a0c12;
+      --surface: #111318;
+    }
+    body.light-mode {
+      --primary: #0d7a5f;
+      --primary-light: #e6f5f1;
+      --primary-mid: #b2ddd4;
+      --accent: #f97316;
+      --bg: #f0f2f5;
+      --white: #ffffff;
+      --border: #dde1ea;
+      --border2: #c8cdd9;
+      --text: #1a202c;
+      --muted: #64748b;
+      --muted2: #8090b0;
+      --sidebar: #1e293b;
+      --surface: #ffffff;
     }
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     html { font-size: 14px; }
@@ -254,6 +270,7 @@
     </div>
     <div style="display:flex;align-items:center;gap:12px">
     <span id="user-name-top" style="font-size:13px;color:var(--muted2)"></span>
+    <button onclick="toggleModo()" id="btn-modo" style="background:transparent;border:1px solid var(--border2);color:var(--muted2);padding:6px 12px;border-radius:8px;font-size:12px;cursor:pointer;font-family:'Inter',sans-serif">🌙 Oscuro</button>
     <button onclick="cerrarSesion()" style="background:transparent;border:1px solid var(--border2);color:var(--muted2);padding:6px 12px;border-radius:8px;font-size:12px;cursor:pointer;font-family:'Inter',sans-serif">Cerrar sesión</button>
   </div>
   </div>
@@ -569,6 +586,25 @@ function cerrarSesion() {
   sessionStorage.clear();
   window.location.href = '/auth';
 }
+
+function toggleModo() {
+  const isLight = document.body.classList.toggle('light-mode');
+  const btn = document.getElementById('btn-modo');
+  btn.textContent = isLight ? '🌙 Oscuro' : '☀️ Claro';
+  localStorage.setItem('modo', isLight ? 'light' : 'dark');
+}
+
+// Aplicar modo guardado
+(function() {
+  const modo = localStorage.getItem('modo');
+  if (modo === 'light') {
+    document.body.classList.add('light-mode');
+    window.addEventListener('DOMContentLoaded', () => {
+      const btn = document.getElementById('btn-modo');
+      if (btn) btn.textContent = '🌙 Oscuro';
+    });
+  }
+})();
 // ────────────────────────────────────────────────────────
 
 
@@ -648,20 +684,28 @@ async function consultarCliente() {
     // Mostrar info del cliente si existe
     if (clientes.length > 0) {
       clienteData = clientes[0];
+      const planesActivos = [...new Set(clientes.filter(c => c.valid).map(c => PLAN_MAP[c.buId]?.plan || c.buName))];
+      const planesExp = [...new Set(clientes.filter(c => !c.valid).map(c => PLAN_MAP[c.buId]?.plan || c.buName))];
+      const resumen = planesActivos.length 
+        ? '✅ Activo: ' + planesActivos.join(', ')
+        : '⚠️ Planes expirados: ' + planesExp.join(', ');
       document.getElementById('client-name').textContent = clienteData.name || '—';
-      document.getElementById('client-plan').textContent = 'CC ' + (clienteData.documentId || doc);
+      document.getElementById('client-plan').textContent = resumen;
       document.getElementById('client-box').className = 'client-box show';
       document.getElementById('ag-clientname').value = clienteData.name || '';
 
-      // Llenar planes del cliente — un plan por BU única
+      // Llenar planes del cliente — un plan por BU única (activos primero)
       const planSel = document.getElementById('ag-plan');
       planSel.innerHTML = '<option value="">Seleccione plan</option>';
       const busVistas = new Set();
-      clientes.forEach(c => {
+      // Ordenar: activos primero
+      const clientesOrdenados = [...clientes].sort((a, b) => (b.valid ? 1 : 0) - (a.valid ? 1 : 0));
+      clientesOrdenados.forEach(c => {
         if (!busVistas.has(c.buId)) {
           busVistas.add(c.buId);
           const planInfo = PLAN_MAP[c.buId] || { plan: c.buName, color: '#64748b' };
-          planSel.innerHTML += '<option value="' + c.id + '|' + c.buId + '">' + planInfo.plan + ' — ' + c.buName + '</option>';
+          const estado = c.valid ? '' : ' (Expirado)';
+          planSel.innerHTML += '<option value="' + c.id + '|' + c.buId + '">' + planInfo.plan + ' — ' + c.buName + estado + '</option>';
         }
       });
     } else {

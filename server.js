@@ -369,59 +369,48 @@ app.delete('/wip/customers/:id', async (req, res) => {
 
 // ── Health check ──────────────────────────────────────────────────────────────
 
-// Traer todos los suscriptores extrayendo documentos únicos de los servicios
+// Traer todos los suscriptores — estrategia: servicios → documentos → suscripciones
 app.get('/wip/subscriptions/all', async (req, res) => {
   try {
     // 1. Obtener BUs
-    const buRes = await wipFetch('/business/api/v1/BusinessUnit/company/' + PROD.COMPANY_ID + '/business-units/services');
+    const buRes = await wipFetch('/business/api/v1/BusinessUnit/company/' + COMPANY_ID + '/business-units/services');
     const buList = (buRes.data.businessUnits || []).map(b => ({ id: b.id, name: b.name }));
 
-    // 2. Traer servicios de todas las BUs para extraer documentos únicos
-    const seen = new Set();
+    // 2. Extraer documentos únicos de servicios por BU
     const documentos = new Set();
-    
-    const pagePromesas = [];
     for (const bu of buList) {
-      for (const page of [1, 2, 3, 4, 5]) {
-        pagePromesas.push(
-          wipFetch('/service/api/v1/Service/search', 'POST', {
+      for (const page of [1,2,3,4,5,6,7,8,9,10]) {
+        try {
+          const r = await wipFetch('/service/api/v1/Service/search', 'POST', {
             pageSize: 50, page: page, sort: 'scheduledDate', sortDirection: 'Desc',
-            companyId: PROD.COMPANY_ID, userId: PROD.USER_ID, businessUnitId: bu.id, subject: ''
-          }).then(r => {
-            (r.data && r.data.data ? r.data.data : []).forEach(s => {
-              if (s.customerDocument) documentos.add(s.customerDocument);
-            });
-          }).catch(() => {})
-        );
+            companyId: COMPANY_ID, userId: USER_ID, businessUnitId: bu.id, subject: ''
+          });
+          const rows = r.data && r.data.data ? r.data.data : [];
+          rows.forEach(s => { if (s.customerDocument) documentos.add(s.customerDocument); });
+          if (rows.length < 50) break; // no hay más páginas
+        } catch(e) { break; }
       }
     }
-    await Promise.all(pagePromesas);
-    console.log('[SUBS/ALL] Documentos únicos encontrados:', documentos.size);
+    console.log('[SUBS/ALL] Documentos únicos:', documentos.size);
 
-    // 3. Para cada documento único, buscar sus suscripciones
+    // 3. Buscar suscripciones de cada documento
+    const seen = new Set();
     const subs = [];
-    const docArray = Array.from(documentos).slice(0, 500);
-    
-    const subPromesas = [];
+    const docArray = Array.from(documentos);
+
     for (const doc of docArray) {
       for (const bu of buList) {
-        subPromesas.push(
-          wipFetch('/Customer/api/v1/Customer/Subscription?companyId=' + PROD.COMPANY_ID + '&businessUnitId=' + bu.id + '&searchTerm=' + encodeURIComponent(doc))
-            .then(r => {
-              const items = Array.isArray(r.data) ? r.data : (r.data && r.data.id ? [r.data] : []);
-              items.forEach(s => {
-                const key = (s.documentId || s.id) + bu.id;
-                if (!seen.has(key)) {
-                  seen.add(key);
-                  subs.push({ ...s, buId: bu.id, buName: bu.name });
-                }
-              });
-            }).catch(() => {})
-        );
+        try {
+          const r = await wipFetch('/Customer/api/v1/Customer/Subscription?companyId=' + COMPANY_ID + '&businessUnitId=' + bu.id + '&searchTerm=' + encodeURIComponent(doc));
+          const items = Array.isArray(r.data) ? r.data : (r.data && r.data.id ? [r.data] : []);
+          items.forEach(s => {
+            const key = (s.documentId || s.id) + bu.id;
+            if (!seen.has(key)) { seen.add(key); subs.push({ ...s, buId: bu.id, buName: bu.name }); }
+          });
+        } catch(e) {}
       }
     }
-    await Promise.all(subPromesas);
-    
+
     console.log('[SUBS/ALL] Total suscriptores:', subs.length);
     res.json({ total: subs.length, data: subs });
   } catch(e) {
