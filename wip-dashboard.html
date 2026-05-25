@@ -556,6 +556,16 @@
   </div>
 </main>
 
+<!-- Modal acceso restringido -->
+<div class="modal-overlay" id="modal-restringido" style="display:none" onclick="cerrarModal()">
+  <div class="modal-box" onclick="event.stopPropagation()">
+    <div class="modal-icon">🔐</div>
+    <div class="modal-title">Acceso Restringido</div>
+    <div class="modal-msg">Esta sección es solo para el administrador de CL TIENE.</div>
+    <button class="btn btn-primary" style="width:100%;justify-content:center" onclick="cerrarModal()">Entendido</button>
+  </div>
+</div>
+
 <script>
 // ── Sesión ──────────────────────────────────────────────
 const urlParams = new URLSearchParams(window.location.search);
@@ -584,6 +594,10 @@ window.addEventListener('DOMContentLoaded', function() {
   console.log('[SESION] Cédula:', cedula);
   buscarServicios();
 });
+
+function cerrarModal() {
+  document.getElementById('modal-restringido').style.display = 'none';
+}
 
 function cerrarSesion() {
   sessionStorage.clear();
@@ -968,7 +982,7 @@ const ADMIN_CEDULA = '80799915';
 
 function accederSuscriptores() {
   if (cedula !== ADMIN_CEDULA) {
-    alert('⛔ Acceso restringido. Solo el administrador puede ver esta sección.');
+    document.getElementById('modal-restringido').style.display = 'flex';
     return;
   }
   showPanel('suscriptores');
