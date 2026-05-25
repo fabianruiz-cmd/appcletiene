@@ -322,6 +322,18 @@
 
       <div class="alert alert-err" id="srv-err"></div>
 
+      <!-- Info del cliente cuando se busca por cédula -->
+      <div id="srv-client-bar" style="display:none;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:12px 16px;margin-bottom:12px;align-items:center;gap:16px;flex-wrap:wrap">
+        <div style="display:flex;align-items:center;gap:10px">
+          <div style="width:36px;height:36px;border-radius:50%;background:rgba(13,122,95,.15);display:flex;align-items:center;justify-content:center;font-size:16px">👤</div>
+          <div>
+            <div id="srv-client-name" style="font-weight:600;font-size:14px"></div>
+            <div id="srv-client-doc" style="font-size:11px;color:var(--muted)"></div>
+          </div>
+        </div>
+        <div id="srv-client-planes" style="display:flex;gap:8px;flex-wrap:wrap;margin-left:4px"></div>
+      </div>
+
       <div class="table-card">
         <div class="table-info" id="srv-info">Ingresa un término de búsqueda para ver resultados.</div>
         <div class="table-wrap">
@@ -916,8 +928,13 @@ async function buscarServicios() {
   const estado  = document.getElementById('f-estado').value;
   const buId    = document.getElementById('f-unidad').value;
   const fecha   = document.getElementById('f-fecha').value;
+  const tipo    = document.getElementById('f-tipo')?.value || 'subject';
   const err = document.getElementById('srv-err');
   err.classList.remove('show');
+
+  // Ocultar barra cliente por defecto
+  const clientBar = document.getElementById('srv-client-bar');
+  clientBar.style.display = 'none';
 
   document.getElementById('srv-info').textContent = 'Buscando...';
   document.getElementById('srv-tbody').innerHTML = '<tr><td colspan="8" style="text-align:center;padding:24px;color:var(--muted)"><div class="loader" style="border-top-color:var(--primary)"></div></td></tr>';
@@ -938,11 +955,64 @@ async function buscarServicios() {
     if (fecha)  rows = rows.filter(r => r.scheduledDate && r.scheduledDate.startsWith(fecha));
 
     renderTabla(rows, data.totalRows);
+
+    // Si busca por cédula, mostrar planes del cliente
+    if (search && rows.length > 0) {
+      const docCliente = search;
+      cargarPlanesClienteEnBarra(docCliente, rows[0]);
+    }
   } catch(e) {
     err.textContent = 'Error: ' + e.message;
     err.classList.add('show');
     document.getElementById('srv-tbody').innerHTML = '';
     document.getElementById('srv-info').textContent = 'Error al buscar';
+  }
+}
+
+async function cargarPlanesClienteEnBarra(doc, primerServicio) {
+  try {
+    if (businessUnits.length === 0) await cargarBUs();
+    const promesas = businessUnits.map(bu =>
+      fetch(`/wip/subscriptions?searchTerm=${encodeURIComponent(doc)}&businessUnitId=${bu.id}`)
+        .then(r => r.json()).catch(() => null)
+    );
+    const resultados = await Promise.all(promesas);
+
+    // Deduplicar suscripciones por id
+    const suscMap = new Map();
+    resultados.forEach(r => {
+      const items = Array.isArray(r) ? r : (r && r.id ? [r] : []);
+      items.forEach(c => {
+        if (!suscMap.has(c.id)) {
+          const nombrePlan = (c.additionalData && c.additionalData['Name subscription']) || 'Plan';
+          suscMap.set(c.id, { ...c, nombrePlan });
+        }
+      });
+    });
+
+    const suscripciones = [...suscMap.values()];
+    if (!suscripciones.length) return;
+
+    const nombre = suscripciones[0].name || primerServicio?.finalClientName || primerServicio?.userName || ('CC ' + doc);
+    document.getElementById('srv-client-name').textContent = nombre;
+    document.getElementById('srv-client-doc').textContent = 'CC ' + doc;
+
+    // Renderizar tags de planes
+    const planesDiv = document.getElementById('srv-client-planes');
+    planesDiv.innerHTML = suscripciones.map(s => {
+      const activo = s.valid;
+      const color = activo ? '#0d7a5f' : '#64748b';
+      const bg = activo ? 'rgba(13,122,95,.12)' : 'rgba(100,116,139,.1)';
+      const fin = s.additionalData?.['End subscription'] || '';
+      const tooltip = fin ? (activo ? `Vence: ${fin}` : `Venció: ${fin}`) : '';
+      return `<span title="${tooltip}" style="display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:20px;font-size:12px;font-weight:600;background:${bg};color:${color};border:1px solid ${color}30">
+        ${activo ? '✅' : '⏱️'} ${s.nombrePlan}${fin ? ' · ' + fin : ''}
+      </span>`;
+    }).join('');
+
+    document.getElementById('srv-client-bar').style.display = 'flex';
+  } catch(e) {
+    console.warn('[planes cliente]', e.message);
   }
 }
 
