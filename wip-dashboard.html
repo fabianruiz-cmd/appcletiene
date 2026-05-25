@@ -241,7 +241,7 @@
 <!-- ══ SIDEBAR ══ -->
 <aside class="sidebar">
   <div class="sidebar-logo">
-    <img src="https://cltiene.com/wp-content/uploads/2026/01/e0280ba2b169453b2ae09ecf07c2b8d01673e12b.png" alt="CL TIENE"
+    <img id="sidebar-logo-img" src="https://cltiene.com/wp-content/uploads/2026/01/e0280ba2b169453b2ae09ecf07c2b8d01673e12b.png" alt="CL TIENE"
          onerror="this.style.display='none';document.getElementById('logo-text').style.display='block'"/>
     <div id="logo-text" style="display:none;color:#fff;font-weight:700;font-size:15px">CL<span style="color:#0d7a5f">TIENE</span></div>
   </div>
@@ -530,12 +530,15 @@
       <div class="filters-bar">
         <div class="filter-group">
           <select id="sub-bu" onchange="buscarSuscriptores()">
-            <option value="">Todas las Unidades</option>
+            <option value="">Todos los Planes</option>
           </select>
         </div>
         <div class="filter-group" style="flex:1;min-width:200px">
           <input type="text" id="sub-search" placeholder="Buscar por cédula o nombre..." onkeydown="if(event.key==='Enter')buscarSuscriptores()"/>
           <button class="btn btn-primary btn-sm" onclick="buscarSuscriptores()">Buscar</button>
+          <button class="btn btn-outline btn-sm" onclick="exportarExcel()" id="btn-export" style="display:none">
+            📥 Exportar Excel
+          </button>
         </div>
       </div>
       <div class="alert alert-err" id="sub-err"></div>
@@ -587,11 +590,20 @@ function cerrarSesion() {
   window.location.href = '/auth';
 }
 
+const LOGO_OSCURO = 'https://cltiene.com/wp-content/uploads/2026/01/e0280ba2b169453b2ae09ecf07c2b8d01673e12b.png';
+const LOGO_CLARO  = 'https://cltiene.com/wp-content/uploads/2025/10/logo-CL.png';
+
 function toggleModo() {
   const isLight = document.body.classList.toggle('light-mode');
   const btn = document.getElementById('btn-modo');
   btn.textContent = isLight ? '🌙 Oscuro' : '☀️ Claro';
   localStorage.setItem('modo', isLight ? 'light' : 'dark');
+  actualizarLogo(isLight);
+}
+
+function actualizarLogo(isLight) {
+  const img = document.getElementById('sidebar-logo-img');
+  if (img) img.src = isLight ? LOGO_CLARO : LOGO_OSCURO;
 }
 
 // Aplicar modo guardado
@@ -602,6 +614,7 @@ function toggleModo() {
     window.addEventListener('DOMContentLoaded', () => {
       const btn = document.getElementById('btn-modo');
       if (btn) btn.textContent = '🌙 Oscuro';
+      actualizarLogo(true);
     });
   }
 })();
@@ -979,6 +992,48 @@ function accederSuscriptores() {
   cargarTodosSuscriptores();
 }
 
+async function cargarSuscriptoresPorPlan(buIds) {
+  _subPagina = 1;
+  document.getElementById('sub-info').textContent = 'Cargando suscriptores del plan...';
+  document.getElementById('sub-tbody').innerHTML = '<tr><td colspan="6" style="text-align:center;padding:24px"><div class="loader" style="border-top-color:var(--primary)"></div></td></tr>';
+
+  try {
+    const seen = new Set();
+    const subs = [];
+    const ids = buIds.split(',').filter(Boolean);
+    const terminos = ['a','e','i','o','u','r','s','n','l','c','m','d','p','g','b'];
+
+    const promesas = [];
+    for (const buId of ids) {
+      const bu = businessUnits.find(b => b.id === buId);
+      for (const term of terminos) {
+        promesas.push(
+          fetch('/wip/subscriptions?searchTerm=' + encodeURIComponent(term) + '&businessUnitId=' + buId)
+            .then(r => r.json())
+            .then(data => {
+              const items = Array.isArray(data) ? data : (data && data.id ? [data] : []);
+              items.forEach(s => {
+                const key = (s.documentId || s.id) + buId;
+                if (!seen.has(key)) {
+                  seen.add(key);
+                  subs.push({ ...s, buId, buName: bu?.name || buId });
+                }
+              });
+            }).catch(() => {})
+        );
+      }
+    }
+    await Promise.all(promesas);
+    window._todosSuscriptores = subs;
+    window._planActual = buIds;
+    renderSuscriptores(subs);
+  } catch(e) {
+    document.getElementById('sub-err').textContent = 'Error: ' + e.message;
+    document.getElementById('sub-err').classList.add('show');
+  }
+}
+
+
 
 // Paginación suscriptores
 let _subPagina = 1;
@@ -1007,30 +1062,24 @@ async function cargarPaginaSuscriptores() {
 }
 
 async function buscarSuscriptores() {
-  const planBuIds = document.getElementById('sub-bu').value; // puede ser "id1,id2,id3"
-  const search    = document.getElementById('sub-search').value.trim().toLowerCase();
-  const err       = document.getElementById('sub-err');
-  err.classList.remove('show');
+  _subPagina = 1;
+  const planBuIds = document.getElementById('sub-bu').value;
+  const search = document.getElementById('sub-search').value.trim();
 
-  // Filtrar desde los datos ya cargados
-  let subs = window._todosSuscriptores || [];
-
-  // Filtrar por plan
-  if (planBuIds) {
-    const ids = planBuIds.split(',');
-    subs = subs.filter(s => ids.includes(s.buId));
+  if (!planBuIds && !search) {
+    document.getElementById('sub-info').textContent = 'Selecciona un plan para ver sus suscriptores.';
+    document.getElementById('sub-tbody').innerHTML = '<tr><td colspan="6"><div class="empty-state"><p>Selecciona un plan del filtro arriba.</p></div></td></tr>';
+    return;
   }
 
-  // Filtrar por búsqueda
-  if (search) {
-    subs = subs.filter(s =>
-      (s.name && s.name.toLowerCase().includes(search)) ||
-      (s.documentId && s.documentId.includes(search)) ||
-      (s.phone && s.phone.includes(search))
-    );
+  // Si cambió el plan, cargar nuevos datos
+  if (planBuIds && window._planActual !== planBuIds) {
+    await cargarSuscriptoresPorPlan(planBuIds);
+    return;
   }
 
-  renderSuscriptores(subs);
+  // Filtrar los ya cargados por búsqueda de texto
+  renderSuscriptores(window._todosSuscriptores || []);
 }
 
 function renderSuscriptores(subs) {
@@ -1072,6 +1121,7 @@ function renderSuscriptores(subs) {
 
   document.getElementById('sub-info').textContent =
     total + ' suscriptor(es) — Página ' + _subPagina + ' de ' + totalPaginas;
+  document.getElementById('btn-export').style.display = total > 0 ? 'inline-flex' : 'none';
 
   if (!pagina.length) {
     document.getElementById('sub-tbody').innerHTML = '<tr><td colspan="6"><div class="empty-state"><p>No se encontraron suscriptores.</p></div></td></tr>';
@@ -1097,6 +1147,47 @@ function renderSuscriptores(subs) {
   }).join('');
 
   renderPaginacion(totalPaginas, clientes);
+}
+
+function exportarExcel() {
+  const subs = window._todosSuscriptores || [];
+  if (!subs.length) return alert('No hay datos para exportar.');
+
+  // Deduplicar por documento
+  const clienteMap = new Map();
+  subs.forEach(s => {
+    const key = s.documentId || s.id;
+    if (!clienteMap.has(key)) clienteMap.set(key, { ...s, planes: [] });
+    const planInfo = PLAN_MAP[s.buId] || { plan: s.buName };
+    const existing = clienteMap.get(key);
+    if (!existing.planes.find(p => p.plan === planInfo.plan)) {
+      existing.planes.push({ plan: planInfo.plan, bu: s.buName, valid: s.valid });
+    }
+  });
+
+  const clientes = Array.from(clienteMap.values());
+  const rows = [['#', 'Nombre', 'Documento', 'Teléfono', 'Planes', 'Estado']];
+  clientes.forEach((s, i) => {
+    rows.push([
+      i + 1,
+      s.name || '',
+      s.documentId || '',
+      s.phone || '',
+      s.planes.map(p => p.plan).join(', '),
+      s.planes.some(p => p.valid) ? 'Activo' : 'Expirado'
+    ]);
+  });
+
+  // Crear CSV
+  const csv = rows.map(r => r.map(v => '"' + String(v).replace(/"/g, '""') + '"').join(',')).join('
+');
+  const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'suscriptores_cltiene_' + new Date().toISOString().slice(0,10) + '.csv';
+  a.click();
+  URL.revokeObjectURL(url);
 }
 
 function renderPaginacion(totalPaginas, clientes) {
