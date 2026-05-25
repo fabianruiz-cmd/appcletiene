@@ -536,8 +536,11 @@
         <div class="filter-group" style="flex:1;min-width:200px">
           <input type="text" id="sub-search" placeholder="Buscar por cédula o nombre..." onkeydown="if(event.key==='Enter')buscarSuscriptores()"/>
           <button class="btn btn-primary btn-sm" onclick="buscarSuscriptores()">Buscar</button>
+          <button class="btn btn-outline btn-sm" onclick="cargarTodos()" id="btn-todos">
+            👥 Cargar Todos
+          </button>
           <button class="btn btn-outline btn-sm" onclick="exportarExcel()" id="btn-export" style="display:none">
-            📥 Exportar Excel
+            📥 Excel
           </button>
         </div>
       </div>
@@ -1004,6 +1007,29 @@ function accederSuscriptores() {
   });
   // Cargar todos automáticamente
   cargarTodosSuscriptores();
+}
+
+async function cargarTodos() {
+  const btn = document.getElementById('btn-todos');
+  btn.textContent = '⏳ Cargando...';
+  btn.disabled = true;
+  document.getElementById('sub-info').textContent = 'Cargando todos los suscriptores... esto puede tardar 20-30 segundos.';
+  document.getElementById('sub-tbody').innerHTML = '<tr><td colspan="6" style="text-align:center;padding:32px"><div class="loader" style="border-top-color:var(--primary);width:24px;height:24px;border-width:3px"></div><p style="margin-top:12px;color:var(--muted);font-size:13px">Extrayendo datos de WIP...</p></td></tr>';
+
+  try {
+    const r = await fetch('/wip/subscriptions/all');
+    const data = await r.json();
+    window._todosSuscriptores = data.data || [];
+    window._planActual = 'todos';
+    renderSuscriptores(window._todosSuscriptores);
+    btn.textContent = '👥 Cargar Todos';
+    btn.disabled = false;
+  } catch(e) {
+    document.getElementById('sub-err').textContent = 'Error: ' + e.message;
+    document.getElementById('sub-err').classList.add('show');
+    btn.textContent = '👥 Cargar Todos';
+    btn.disabled = false;
+  }
 }
 
 async function cargarSuscriptoresPorPlan(buIds) {

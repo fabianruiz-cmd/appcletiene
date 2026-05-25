@@ -369,52 +369,68 @@ app.delete('/wip/customers/:id', async (req, res) => {
 
 // ── Health check ──────────────────────────────────────────────────────────────
 
-// Traer todos los suscriptores — estrategia: servicios → documentos → suscripciones
+// Traer todos los suscriptores — usa el mismo patrón del endpoint de servicios que funciona
 app.get('/wip/subscriptions/all', async (req, res) => {
   try {
-    // 1. Obtener BUs
-    const buRes = await wipFetch('/business/api/v1/BusinessUnit/company/' + COMPANY_ID + '/business-units/services');
-    const buList = (buRes.data.businessUnits || []).map(b => ({ id: b.id, name: b.name }));
+    const cfg = getCfg('prod');
 
-    // 2. Extraer documentos únicos de servicios por BU
+    // 1. Obtener BUs
+    const buRes = await wipFetch('/business/api/v1/BusinessUnit/company/' + cfg.COMPANY_ID + '/business-units/services', 'GET', null, 'prod');
+    const buList = (buRes.data.businessUnits || []).map(b => ({ id: b.id, name: b.name }));
+    console.log('[SUBS/ALL] BUs:', buList.length);
+
+    // 2. Extraer documentos únicos buscando servicios por BU (mismo patrón que funciona)
     const documentos = new Set();
+    const servicePromesas = [];
+
     for (const bu of buList) {
-      for (const page of [1,2,3,4,5,6,7,8,9,10]) {
-        try {
-          const r = await wipFetch('/service/api/v1/Service/search', 'POST', {
-            pageSize: 50, page: page, sort: 'scheduledDate', sortDirection: 'Desc',
-            companyId: COMPANY_ID, userId: USER_ID, businessUnitId: bu.id, subject: ''
-          });
-          const rows = r.data && r.data.data ? r.data.data : [];
-          rows.forEach(s => { if (s.customerDocument) documentos.add(s.customerDocument); });
-          if (rows.length < 50) break; // no hay más páginas
-        } catch(e) { break; }
+      for (let page = 1; page <= 15; page++) {
+        servicePromesas.push(
+          wipFetch('/service/api/v1/Service/search', 'POST', {
+            pageSize: 50,
+            page: page,
+            sort: 'scheduledDate',
+            sortDirection: 'Desc',
+            companyId: cfg.COMPANY_ID,
+            userId: cfg.USER_ID,
+            businessUnitId: bu.id,
+            subject: ''
+          }, 'prod').then(r => {
+            const rows = (r.data && r.data.data) ? r.data.data : [];
+            rows.forEach(s => { if (s.customerDocument) documentos.add(s.customerDocument.trim()); });
+            return rows.length;
+          }).catch(() => 0)
+        );
       }
     }
-    console.log('[SUBS/ALL] Documentos únicos:', documentos.size);
 
-    // 3. Buscar suscripciones de cada documento
+    await Promise.all(servicePromesas);
+    console.log('[SUBS/ALL] Documentos únicos extraídos:', documentos.size);
+
+    // 3. Para cada documento, buscar suscripciones en todas las BUs en paralelo
     const seen = new Set();
     const subs = [];
     const docArray = Array.from(documentos);
 
-    for (const doc of docArray) {
-      for (const bu of buList) {
-        try {
-          const r = await wipFetch('/Customer/api/v1/Customer/Subscription?companyId=' + COMPANY_ID + '&businessUnitId=' + bu.id + '&searchTerm=' + encodeURIComponent(doc));
-          const items = Array.isArray(r.data) ? r.data : (r.data && r.data.id ? [r.data] : []);
-          items.forEach(s => {
-            const key = (s.documentId || s.id) + bu.id;
-            if (!seen.has(key)) { seen.add(key); subs.push({ ...s, buId: bu.id, buName: bu.name }); }
-          });
-        } catch(e) {}
-      }
-    }
+    const subPromesas = docArray.flatMap(doc =>
+      buList.map(bu =>
+        wipFetch('/Customer/api/v1/Customer/Subscription?companyId=' + cfg.COMPANY_ID + '&businessUnitId=' + bu.id + '&searchTerm=' + encodeURIComponent(doc), 'GET', null, 'prod')
+          .then(r => {
+            const items = Array.isArray(r.data) ? r.data : (r.data && r.data.id ? [r.data] : []);
+            items.forEach(s => {
+              const key = (s.documentId || s.id) + bu.id;
+              if (!seen.has(key)) { seen.add(key); subs.push({ ...s, buId: bu.id, buName: bu.name }); }
+            });
+          }).catch(() => {})
+      )
+    );
 
+    await Promise.all(subPromesas);
     console.log('[SUBS/ALL] Total suscriptores:', subs.length);
     res.json({ total: subs.length, data: subs });
+
   } catch(e) {
-    console.error('[SUBS/ALL]', e.message);
+    console.error('[SUBS/ALL] Error:', e.message);
     res.status(500).json({ message: e.message });
   }
 });
