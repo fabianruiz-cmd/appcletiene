@@ -697,83 +697,77 @@ async function consultarCliente() {
     // Cargar BUs si no están cargados
     if (businessUnits.length === 0) await cargarBUs();
 
-    // 1. Buscar cliente en suscripciones
+    // 1. Buscar cliente en suscripciones (paralelo por BU)
     const promesas = businessUnits.map(bu =>
       fetch(`/wip/subscriptions?searchTerm=${encodeURIComponent(doc)}&businessUnitId=${bu.id}`)
         .then(r => r.json()).catch(() => null)
     );
     const resultados = await Promise.all(promesas);
-    const clientes = [];
+
+    // Deduplicar por id — UNA suscripción puede cubrir múltiples BUs (businessUnitIds[])
+    // Guardamos todas las BUs que realmente cubre según la respuesta de la API
+    const suscripcionesMap = new Map();
     resultados.forEach((r, i) => {
       const items = Array.isArray(r) ? r : (r && r.id ? [r] : []);
       items.forEach(c => {
-        if (!clientes.find(x => x.id === c.id)) clientes.push({...c, buId: businessUnits[i].id, buName: businessUnits[i].name});
+        if (!suscripcionesMap.has(c.id)) {
+          // Determinar BUs reales que cubre esta suscripción
+          const buIdsCubiertos = Array.isArray(c.businessUnitIds) ? c.businessUnitIds : [businessUnits[i].id];
+          const busCubiertas = businessUnits.filter(b => buIdsCubiertos.includes(b.id));
+          // Nombre del plan: usar additionalData["Name subscription"] si existe
+          const nombrePlan = (c.additionalData && c.additionalData['Name subscription'])
+            ? c.additionalData['Name subscription']
+            : (busCubiertas.length === 1 ? (PLAN_MAP[busCubiertas[0].id]?.plan || busCubiertas[0].name) : 'Plan Multi-Servicio');
+          suscripcionesMap.set(c.id, { ...c, nombrePlan, busCubiertas });
+        }
       });
     });
+    const clientes = [...suscripcionesMap.values()];
 
     // Mostrar info del cliente si existe
     if (clientes.length > 0) {
       clienteData = clientes[0];
-      // Usar buName directamente de la API (nombre real de la BU), con PLAN_MAP como fallback
-      const getNombrePlan = (c) => PLAN_MAP[c.buId]?.plan || c.buName || 'Plan Desconocido';
-      const planesActivos = [...new Set(clientes.filter(c => c.valid).map(getNombrePlan))];
-      const planesExp    = [...new Set(clientes.filter(c => !c.valid).map(getNombrePlan))];
+      const planesActivos = clientes.filter(c => c.valid).map(c => c.nombrePlan);
+      const planesExp     = clientes.filter(c => !c.valid).map(c => c.nombrePlan);
       const resumen = planesActivos.length
-        ? '✅ Activo: ' + planesActivos.join(', ')
-        : (planesExp.length ? '⚠️ Planes expirados: ' + planesExp.join(', ') : 'Sin plan registrado');
+        ? '✅ Activo: ' + [...new Set(planesActivos)].join(', ')
+        : (planesExp.length ? '⚠️ Expirado: ' + [...new Set(planesExp)].join(', ') : 'Sin plan registrado');
       document.getElementById('client-name').textContent = clienteData.name || '—';
       document.getElementById('client-plan').textContent = resumen;
       document.getElementById('client-box').className = 'client-box show';
       document.getElementById('ag-clientname').value = clienteData.name || '';
 
-      // Llenar planes del cliente — un plan por BU única (activos primero)
+      // Selector de plan: una opción por suscripción (activas primero)
       const planSel = document.getElementById('ag-plan');
       planSel.innerHTML = '<option value="">Seleccione plan</option>';
-      const busVistas = new Set();
-      // Ordenar: activos primero
-      const clientesOrdenados = [...clientes].sort((a, b) => (b.valid ? 1 : 0) - (a.valid ? 1 : 0));
-      clientesOrdenados.forEach(c => {
-        if (!busVistas.has(c.buId)) {
-          busVistas.add(c.buId);
-          const nombrePlan = getNombrePlan(c);
-          const planInfo = PLAN_MAP[c.buId] || { plan: nombrePlan, color: '#64748b' };
-          const estado = c.valid ? '' : ' (Expirado)';
-          planSel.innerHTML += '<option value="' + c.id + '|' + c.buId + '">' + planInfo.plan + ' — ' + c.buName + estado + '</option>';
-        }
+      [...clientes].sort((a, b) => (b.valid ? 1 : 0) - (a.valid ? 1 : 0)).forEach(c => {
+        const estado = c.valid ? '' : ' (Expirado)';
+        const buNombres = c.busCubiertas.map(b => b.name).join(', ');
+        // Guardamos el id de la suscripción y el primer buId cubierto (para crear servicio)
+        const primerBuId = c.busCubiertas[0]?.id || '';
+        planSel.innerHTML += `<option value="${c.id}|${primerBuId}" data-bus='${JSON.stringify(c.busCubiertas.map(b=>b.id))}'>${c.nombrePlan}${estado} (${buNombres})</option>`;
       });
     } else {
-      // Si no tiene suscripción, mostrar igualmente y cargar todas las BUs
       clienteData = { id: null, name: doc };
       document.getElementById('client-name').textContent = 'CC ' + doc;
       document.getElementById('client-plan').textContent = 'Sin plan registrado';
       document.getElementById('client-box').className = 'client-box show';
       document.getElementById('ag-clientname').value = '';
-
-      // Plan vacío — dejar que seleccione BU manualmente
       const planSel = document.getElementById('ag-plan');
       planSel.innerHTML = '<option value="">Sin plan activo</option>';
     }
 
-    // Cargar solo las BUs del cliente (sus suscripciones)
+    // Selector de BU: mostrar solo las BUs cubiertas por las suscripciones del cliente
     const buSel = document.getElementById('ag-bu');
     buSel.innerHTML = '<option value="">Seleccione una unidad...</option>';
     if (clientes.length > 0) {
-      // Mostrar solo BUs donde tiene suscripción
-      const buIds = [...new Set(clientes.map(c => c.buId))];
-      buIds.forEach(buId => {
-        const bu = businessUnits.find(b => b.id === buId);
-        if (bu) {
-          const planInfo = PLAN_MAP[bu.id];
-          const label = planInfo ? planInfo.plan + ' — ' + bu.name : bu.name;
-          buSel.innerHTML += '<option value="' + bu.id + '">' + label + '</option>';
-        }
+      const buIdsCubiertos = new Set(clientes.flatMap(c => c.busCubiertas.map(b => b.id)));
+      businessUnits.filter(b => buIdsCubiertos.has(b.id)).forEach(bu => {
+        buSel.innerHTML += `<option value="${bu.id}">${bu.name}</option>`;
       });
     } else {
-      // Sin suscripción — mostrar todas
       businessUnits.forEach(bu => {
-        const planInfo = PLAN_MAP[bu.id];
-        const label = planInfo ? planInfo.plan + ' — ' + bu.name : bu.name;
-        buSel.innerHTML += '<option value="' + bu.id + '">' + label + '</option>';
+        buSel.innerHTML += `<option value="${bu.id}">${bu.name}</option>`;
       });
     }
 
