@@ -222,15 +222,11 @@
     /* Client info box */
     .client-box {
       background: var(--primary-light); border: 1px solid var(--primary-mid);
-      border-radius: 8px; padding: 12px 14px; margin-top: 8px; display: none;
+      border-radius: 8px; padding: 10px 14px; margin-top: 8px; display: none;
     }
     .client-box.show { display: block; }
     .client-box strong { color: var(--primary); font-size: 14px; }
-    .client-box p { font-size: 12px; color: var(--muted); margin-top: 4px; }
-    .plan-badges { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
-    .plan-badge {
-      padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 600;
-    }
+    .client-box p { font-size: 12px; color: var(--muted); margin-top: 2px; }
 
     @media (max-width: 768px) {
       .sidebar { width: 56px; }
@@ -414,10 +410,7 @@
         <div class="form-row">
           <div class="form-group">
             <label>Tipo de Plan <span class="req">*</span></label>
-            <div id="ag-plan-badges" class="plan-badges" style="min-height:36px;align-items:center">
-              <span style="color:var(--muted);font-size:13px">Consulta una cédula para ver los planes</span>
-            </div>
-            <select id="ag-plan" onchange="onPlanChange()" style="margin-top:8px">
+            <select id="ag-plan" onchange="onPlanChange()">
               <option value="">Seleccione plan</option>
             </select>
           </div>
@@ -721,73 +714,32 @@ async function consultarCliente() {
     // Mostrar info del cliente si existe
     if (clientes.length > 0) {
       clienteData = clientes[0];
-      const planesActivos = [...new Set(clientes.filter(c => c.valid).map(c => PLAN_MAP[c.buId]?.plan || c.buName))];
-      const planesExp = [...new Set(clientes.filter(c => !c.valid).map(c => PLAN_MAP[c.buId]?.plan || c.buName))];
-      const resumen = planesActivos.length 
+      // Usar buName directamente de la API (nombre real de la BU), con PLAN_MAP como fallback
+      const getNombrePlan = (c) => PLAN_MAP[c.buId]?.plan || c.buName || 'Plan Desconocido';
+      const planesActivos = [...new Set(clientes.filter(c => c.valid).map(getNombrePlan))];
+      const planesExp    = [...new Set(clientes.filter(c => !c.valid).map(getNombrePlan))];
+      const resumen = planesActivos.length
         ? '✅ Activo: ' + planesActivos.join(', ')
-        : '⚠️ Planes expirados: ' + planesExp.join(', ');
+        : (planesExp.length ? '⚠️ Planes expirados: ' + planesExp.join(', ') : 'Sin plan registrado');
       document.getElementById('client-name').textContent = clienteData.name || '—';
       document.getElementById('client-plan').textContent = resumen;
       document.getElementById('client-box').className = 'client-box show';
       document.getElementById('ag-clientname').value = clienteData.name || '';
 
-      // Mostrar los 5 planes principales como badges
+      // Llenar planes del cliente — un plan por BU única (activos primero)
       const planSel = document.getElementById('ag-plan');
-      const planBadges = document.getElementById('ag-plan-badges');
       planSel.innerHTML = '<option value="">Seleccione plan</option>';
-      planBadges.innerHTML = '';
-
-      // Planes principales con sus BUs primarias
-      const PLANES_PRINCIPALES = [
-        { plan: 'Plan Salud',     color: '#3b82f6', buId: '67379e74213b73f99523f063', buName: 'MEDICO' },
-        { plan: 'Plan Movilidad', color: '#f59e0b', buId: '67379ea1213b73f99523f064', buName: 'VIAL' },
-        { plan: 'Plan Manada',    color: '#0d7a5f', buId: '673b9acc4b246b4609e3dab1', buName: 'COMPLEMENTARIA' },
-        { plan: 'Plan Mascotas',  color: '#10b981', buId: '67379e864b246b4609e3da9d', buName: 'MASCOTAS' },
-        { plan: 'Plan Premium',   color: '#e91e8c', buId: '67379e984b246b4609e3da9e', buName: 'HOGAR' },
-      ];
-
-      // Detectar qué planes tiene activos el cliente
-      const planesActivosSet = new Set(clientes.map(x => PLAN_MAP[x.buId]?.plan).filter(Boolean));
-
-      PLANES_PRINCIPALES.forEach(p => {
-        const tieneActivo = planesActivosSet.has(p.plan);
-
-        // Agregar al select
-        const clientePlan = clientes.find(c => PLAN_MAP[c.buId]?.plan === p.plan);
-        const val = clientePlan ? clientePlan.id + '|' + clientePlan.buId : 'none|' + p.buId;
-        planSel.innerHTML += '<option value="' + val + '">' + p.plan + '</option>';
-
-        // Badge visual
-        const badge = document.createElement('div');
-        badge.style.cssText = 'display:inline-flex;flex-direction:column;align-items:center;gap:4px;cursor:pointer;';
-
-        const btn = document.createElement('span');
-        btn.style.cssText = 'padding:8px 18px;border-radius:24px;font-size:13px;font-weight:700;transition:all .15s;' +
-          'background:' + p.color + ';color:#fff;' +
-          (tieneActivo ? 'box-shadow:0 2px 8px ' + p.color + '66;' : 'opacity:0.45;');
-        btn.textContent = p.plan;
-        btn.title = tieneActivo ? 'Activo — clic para seleccionar' : 'Sin plan activo';
-
-        btn.onclick = function() {
-          // Seleccionar en el select
-          for (let i = 0; i < planSel.options.length; i++) {
-            if (planSel.options[i].text === p.plan) {
-              planSel.selectedIndex = i;
-              onPlanChange();
-              break;
-            }
-          }
-          // Resaltar badge seleccionado
-          document.querySelectorAll('#ag-plan-badges span').forEach(b => {
-            b.style.outline = 'none';
-            b.style.transform = 'scale(1)';
-          });
-          btn.style.outline = '3px solid ' + p.color;
-          btn.style.transform = 'scale(1.05)';
-        };
-
-        badge.appendChild(btn);
-        planBadges.appendChild(badge);
+      const busVistas = new Set();
+      // Ordenar: activos primero
+      const clientesOrdenados = [...clientes].sort((a, b) => (b.valid ? 1 : 0) - (a.valid ? 1 : 0));
+      clientesOrdenados.forEach(c => {
+        if (!busVistas.has(c.buId)) {
+          busVistas.add(c.buId);
+          const nombrePlan = getNombrePlan(c);
+          const planInfo = PLAN_MAP[c.buId] || { plan: nombrePlan, color: '#64748b' };
+          const estado = c.valid ? '' : ' (Expirado)';
+          planSel.innerHTML += '<option value="' + c.id + '|' + c.buId + '">' + planInfo.plan + ' — ' + c.buName + estado + '</option>';
+        }
       });
     } else {
       // Si no tiene suscripción, mostrar igualmente y cargar todas las BUs
@@ -838,7 +790,6 @@ function resetClienteInfo() {
   document.getElementById('client-box').className = 'client-box';
   document.getElementById('ag-clientname').value = '';
   document.getElementById('ag-plan').innerHTML = '<option value="">Seleccione plan</option>';
-  document.getElementById('ag-plan-badges').innerHTML = '<span style="color:var(--muted);font-size:13px">Consulta una cédula para ver los planes</span>';
   document.getElementById('ag-bu').innerHTML = '<option value="">Seleccione una unidad...</option>';
   document.getElementById('ag-tipo').innerHTML = '<option value="">Seleccione el tipo...</option>';
 }
