@@ -1153,7 +1153,6 @@ function exportarExcel() {
   const subs = window._todosSuscriptores || [];
   if (!subs.length) return alert('No hay datos para exportar.');
 
-  // Deduplicar por documento
   const clienteMap = new Map();
   subs.forEach(s => {
     const key = s.documentId || s.id;
@@ -1161,34 +1160,30 @@ function exportarExcel() {
     const planInfo = PLAN_MAP[s.buId] || { plan: s.buName };
     const existing = clienteMap.get(key);
     if (!existing.planes.find(p => p.plan === planInfo.plan)) {
-      existing.planes.push({ plan: planInfo.plan, bu: s.buName, valid: s.valid });
+      existing.planes.push({ plan: planInfo.plan, valid: s.valid });
     }
   });
 
   const clientes = Array.from(clienteMap.values());
-  const rows = [['#', 'Nombre', 'Documento', 'Teléfono', 'Planes', 'Estado']];
-  clientes.forEach((s, i) => {
-    rows.push([
-      i + 1,
-      s.name || '',
-      s.documentId || '',
-      s.phone || '',
-      s.planes.map(p => p.plan).join(', '),
-      s.planes.some(p => p.valid) ? 'Activo' : 'Expirado'
-    ]);
+  let csv = 'Nombre,Documento,Telefono,Planes,Estado\n';
+  clientes.forEach(s => {
+    const nombre = (s.name || '').replace(/,/g, ' ');
+    const doc = s.documentId || '';
+    const tel = s.phone || '';
+    const planes = s.planes.map(p => p.plan).join(' - ');
+    const estado = s.planes.some(p => p.valid) ? 'Activo' : 'Expirado';
+    csv += nombre + ',' + doc + ',' + tel + ',' + planes + ',' + estado + '\n';
   });
 
-  // Crear CSV
-  const csv = rows.map(r => r.map(v => '"' + String(v).replace(/"/g, '""') + '"').join(',')).join('
-');
-  const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' });
+  const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
-  a.download = 'suscriptores_cltiene_' + new Date().toISOString().slice(0,10) + '.csv';
+  a.download = 'suscriptores_' + new Date().toISOString().slice(0,10) + '.csv';
   a.click();
   URL.revokeObjectURL(url);
 }
+
 
 function renderPaginacion(totalPaginas, clientes) {
   // Eliminar paginación anterior
