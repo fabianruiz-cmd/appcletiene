@@ -31,8 +31,8 @@ const WA_URL   = process.env.WHAPI_URL   || 'https://gate.whapi.cloud';
 const WA_TOKEN = process.env.WHAPI_TOKEN || 'WwW3UAz2x6iJ0nasEd7ar5WFoVsxnGpc';
 
 // ── Supabase Auth — OTP por email (sin dominio, sin SMTP) ────────────────────
-const SUPABASE_URL      = process.env.SUPABASE_URL      || 'https://wpmhbguxouhmlurvoezon.supabase.co';
-const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndwbWhiZ3V4b3VobWx1cnZvZXpuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk4OTM0NjYsImV4cCI6MjA5NTQ2OTQ2Nn0.JMR5q2HKGG3TX9_iF6385vuUjEh4utNQv0ckt1D8Zow';
+const SUPABASE_URL      = process.env.SUPABASE_URL      || '';
+const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY || '';
 
 async function supabaseRequest(path, body) {
   const nodeFetch = (await import('node-fetch')).default;
@@ -497,6 +497,17 @@ app.get('/api/bus', async (req, res) => {
 
 app.get('/api/health', function(req, res) {
   res.json({ status: 'ok', uptime: process.uptime(), env: ENV, prod_base: PROD.BASE, qa_base: QA.BASE });
+});
+
+app.get('/api/diag/supabase', async (req, res) => {
+  const url = SUPABASE_URL, key = SUPABASE_ANON_KEY;
+  if (!url || !key) return res.json({ ok: false, error: 'Variables no configuradas', url, keyPresente: !!key });
+  try {
+    const nodeFetch = (await import('node-fetch')).default;
+    const r = await nodeFetch(url + '/auth/v1/settings', { headers: { 'apikey': key } });
+    const data = await r.json();
+    res.json({ ok: r.ok, status: r.status, url, data });
+  } catch(e) { res.json({ ok: false, error: e.message, url }); }
 });
 
 // ── Diagnóstico: ver suscripciones de un documento en TODAS las BUs ──────────
