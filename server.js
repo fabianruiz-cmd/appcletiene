@@ -31,8 +31,8 @@ const WA_URL   = process.env.WHAPI_URL   || 'https://gate.whapi.cloud';
 const WA_TOKEN = process.env.WHAPI_TOKEN || 'WwW3UAz2x6iJ0nasEd7ar5WFoVsxnGpc';
 
 // ── Supabase Auth — OTP por email (sin dominio, sin SMTP) ────────────────────
-const SUPABASE_URL      = process.env.SUPABASE_URL      || '';
-const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY || '';
+const SUPABASE_URL      = process.env.SUPABASE_URL      || 'https://wpmhbguxouhmlurvoezon.supabase.co';
+const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndwbWhiZ3V4b3VobWx1cnZvZXpuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk4OTM0NjYsImV4cCI6MjA5NTQ2OTQ2Nn0.JMR5q2HKGG3TX9_iF6385vuUjEh4utNQv0ckt1D8Zow';
 
 async function supabaseRequest(path, body) {
   const nodeFetch = (await import('node-fetch')).default;
