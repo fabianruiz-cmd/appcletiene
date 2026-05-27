@@ -753,11 +753,14 @@ async function consultarCliente() {
       const planSel = document.getElementById('ag-plan');
       planSel.innerHTML = '<option value="">Seleccione plan</option>';
       [...clientes].sort((a, b) => (b.valid ? 1 : 0) - (a.valid ? 1 : 0)).forEach(c => {
-        const estado = c.valid ? '' : ' (Expirado)';
         const buNombres = c.busCubiertas.map(b => b.name).join(', ');
-        // Guardamos el id de la suscripción y el primer buId cubierto (para crear servicio)
         const primerBuId = c.busCubiertas[0]?.id || '';
-        planSel.innerHTML += `<option value="${c.id}|${primerBuId}" data-bus='${JSON.stringify(c.busCubiertas.map(b=>b.id))}'>${c.nombrePlan}${estado} (${buNombres})</option>`;
+        if (c.valid) {
+          planSel.innerHTML += `<option value="${c.id}|${primerBuId}" data-bus='${JSON.stringify(c.busCubiertas.map(b=>b.id))}'>${c.nombrePlan} (${buNombres})</option>`;
+        } else {
+          const fin = c.additionalData?.['End subscription'] || '';
+          planSel.innerHTML += `<option value="" disabled style="color:#94a3b8">⛔ ${c.nombrePlan} — Expirado${fin ? ' ' + fin : ''} (${buNombres})</option>`;
+        }
       });
     } else {
       clienteData = { id: null, name: doc };
@@ -858,6 +861,15 @@ async function registrarServicio() {
   if (!doc || !cliente || !buRaw || !tipoRaw || !fecha || !fromAddr || !fromCity) {
     err.textContent = 'Por favor completa todos los campos obligatorios (*)';
     err.classList.add('show');
+    return;
+  }
+
+  // Validar que el plan seleccionado sea válido (no expirado)
+  const planSel = document.getElementById("ag-plan");
+  const planVal = planSel ? planSel.value : null;
+  if (planSel && (!planVal || planVal === "")) {
+    err.textContent = "El cliente no tiene un plan activo vigente. No es posible registrar el servicio.";
+    err.classList.add("show");
     return;
   }
 
