@@ -30,6 +30,24 @@ const QA = {
 const WA_URL   = process.env.WHAPI_URL   || 'https://gate.whapi.cloud';
 const WA_TOKEN = process.env.WHAPI_TOKEN || 'WwW3UAz2x6iJ0nasEd7ar5WFoVsxnGpc';
 
+// ── Supabase Auth — OTP por email (sin dominio, sin SMTP) ────────────────────
+const SUPABASE_URL      = process.env.SUPABASE_URL      || '';
+const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY || '';
+
+async function supabaseRequest(path, body) {
+  const nodeFetch = (await import('node-fetch')).default;
+  const res = await nodeFetch(SUPABASE_URL + '/auth/v1' + path, {
+    method: 'POST',
+    headers: {
+      'apikey': SUPABASE_ANON_KEY,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify(body)
+  });
+  const data = await res.json();
+  return { ok: res.ok, status: res.status, data };
+}
+
 function getCfg(env) { return env === 'qa' ? QA : PROD; }
 
 // Aliases para compatibilidad
@@ -103,89 +121,123 @@ async function sendWA(tel, msg) {
 // ── OTP Store ─────────────────────────────────────────────────────────────────
 const otpStore = new Map();
 
+// ── Buscar cliente en todas las BUs ───────────────────────────────────────────
+async function buscarClienteWIP(doc, env) {
+  const cfg = getCfg(env);
+  const buRes = await wipFetch('/business/api/v1/BusinessUnit/company/' + cfg.COMPANY_ID + '/business-units/services', 'GET', null, env);
+  const buIds = (buRes.data.businessUnits || []).map(function(b) { return b.id; });
+  const nodeFetch = (await import('node-fetch')).default;
+  const promesas = buIds.map(function(buId) {
+    return nodeFetch(cfg.BASE + '/Customer/api/v1/Customer/Subscription?companyId=' + cfg.COMPANY_ID + '&businessUnitId=' + buId + '&searchTerm=' + encodeURIComponent(doc), {
+      headers: { 'Authorization': cfg.KEY, 'Content-Type': 'application/json' }
+    }).then(function(r) { return r.json(); }).catch(function() { return null; });
+  });
+  const resultados = await Promise.all(promesas);
+  const vistos = new Map();
+  resultados.forEach(function(r) {
+    const items = Array.isArray(r) ? r : (r && r.id ? [r] : []);
+    items.forEach(function(c) { if (!vistos.has(c.id)) vistos.set(c.id, c); });
+  });
+  return [...vistos.values()];
+}
+
+function maskEmail(email) {
+  const parts = email.split('@');
+  const user = parts[0], domain = parts[1];
+  const visible = user.length > 3 ? user.slice(0, 3) : user.slice(0, 1);
+  return visible + '***@' + domain;
+}
+
+async function enviarOTPEmail(email, nombre, code) {
+  const html = `
+  <div style="font-family:Arial,sans-serif;max-width:480px;margin:0 auto;padding:32px;background:#f8fafc;border-radius:12px">
+    <div style="text-align:center;margin-bottom:24px">
+      <img src="https://cltiene.com/wp-content/uploads/2025/10/logo-CL.png" height="48" alt="CL TIENE" style="max-height:48px"/>
+    </div>
+    <h2 style="color:#0d7a5f;text-align:center;margin-bottom:8px">Código de Verificación</h2>
+    <p style="color:#475569;text-align:center;margin-bottom:28px">Hola <strong>${nombre}</strong>, usa este código para acceder a tu panel:</p>
+    <div style="background:#fff;border:2px solid #0d7a5f;border-radius:12px;padding:24px;text-align:center;margin-bottom:24px">
+      <span style="font-size:38px;font-weight:800;letter-spacing:10px;color:#0d7a5f">${code}</span>
+    </div>
+    <p style="color:#94a3b8;font-size:12px;text-align:center">Válido por <strong>5 minutos</strong>. No lo compartas con nadie.</p>
+    <hr style="border:none;border-top:1px solid #e2e8f0;margin:24px 0"/>
+    <p style="color:#cbd5e1;font-size:11px;text-align:center">MULTISERVICIOS CL TIENE — Panel de Servicios</p>
+  </div>`;
+  return sendEmail(email, '🔐 Tu código de acceso — CL TIENE', html);
+}
+
 // ════════════════════════════════════════════════════════════════════════════
-// AUTH — OTP por WhatsApp
+// AUTH — OTP por Email
 // ════════════════════════════════════════════════════════════════════════════
 
 app.post('/api/auth/validate-document', async (req, res) => {
-  const doc = req.body.documento;
-  const env = req.body.env || 'prod';
+  const doc = req.body.documento, env = req.body.env || 'prod';
   if (!doc) return res.status(400).json({ success: false, message: 'Documento requerido' });
   try {
-    const cfg = getCfg(env);
-    const buRes = await wipFetch('/business/api/v1/BusinessUnit/company/' + cfg.COMPANY_ID + '/business-units/services', 'GET', null, env);
-    const buIds = (buRes.data.businessUnits || []).map(function(b) { return b.id; });
-    const nodeFetch = (await import('node-fetch')).default;
-    const promesas = buIds.map(function(buId) {
-      return nodeFetch(cfg.BASE + '/Customer/api/v1/Customer/Subscription?companyId=' + cfg.COMPANY_ID + '&businessUnitId=' + buId + '&searchTerm=' + encodeURIComponent(doc), {
-        headers: { 'Authorization': cfg.KEY, 'Content-Type': 'application/json' }
-      }).then(function(r) { return r.json(); }).catch(function() { return null; });
-    });
-    const resultados = await Promise.all(promesas);
-    const clientes = [];
-    resultados.forEach(function(r) {
-      const items = Array.isArray(r) ? r : (r && r.id ? [r] : []);
-      items.forEach(function(c) { if (!clientes.find(function(x) { return x.id === c.id; })) clientes.push(c); });
-    });
+    const clientes = await buscarClienteWIP(doc, env);
     if (!clientes.length) return res.status(404).json({ success: false, message: 'Documento no encontrado en el sistema.' });
-    const cliente = clientes[0];
-    const tel = cliente.phone || '';
-    const masked = tel ? tel.replace(/\d(?=\d{4})/g, '*') : null;
-    res.json({ success: true, user: { nombre: cliente.name, telefono: masked, tieneWhatsApp: !!tel } });
-  } catch(e) {
-    res.status(500).json({ success: false, message: e.message });
-  }
+    let email = '', nombre = '';
+    clientes.forEach(function(c) {
+      if (!email && c.email) email = c.email;
+      if (!nombre && c.name) nombre = c.name;
+    });
+    res.json({ success: true, user: { nombre, tieneEmail: !!email, emailMasked: email ? maskEmail(email) : null } });
+  } catch(e) { res.status(500).json({ success: false, message: e.message }); }
 });
 
 app.post('/api/auth/send-code', async (req, res) => {
-  const doc = req.body.documento;
-  const env = req.body.env || 'prod';
-  if (!doc) return res.status(400).json({ success: false, message: 'Documento requerido' });
-  const existing = otpStore.get(doc);
-  if (existing && Date.now() < existing.expires - 90000) {
-    return res.status(429).json({ success: false, message: 'Espera antes de solicitar otro código.' });
-  }
+  const doc = req.body.documento, email = req.body.email, env = req.body.env || 'prod';
+  if (!doc)   return res.status(400).json({ success: false, message: 'Documento requerido' });
+  if (!email) return res.status(400).json({ success: false, message: 'Correo electrónico requerido' });
+  if (!SUPABASE_URL || !SUPABASE_ANON_KEY)
+    return res.status(500).json({ success: false, message: 'Supabase no configurado en el servidor.' });
+
   try {
-    const cfg = getCfg(env);
-    const buRes = await wipFetch('/business/api/v1/BusinessUnit/company/' + cfg.COMPANY_ID + '/business-units/services', 'GET', null, env);
-    const buIds = (buRes.data.businessUnits || []).map(function(b) { return b.id; });
-    const nodeFetch = (await import('node-fetch')).default;
-    const promesas = buIds.map(function(buId) {
-      return nodeFetch(cfg.BASE + '/Customer/api/v1/Customer/Subscription?companyId=' + cfg.COMPANY_ID + '&businessUnitId=' + buId + '&searchTerm=' + encodeURIComponent(doc), {
-        headers: { 'Authorization': cfg.KEY, 'Content-Type': 'application/json' }
-      }).then(function(r) { return r.json(); }).catch(function() { return null; });
+    const clientes = await buscarClienteWIP(doc, env);
+    if (!clientes.length) return res.status(404).json({ success: false, message: 'Documento no encontrado.' });
+    let nombre = '';
+    clientes.forEach(function(c) { if (!nombre && c.name) nombre = c.name; });
+
+    // Guardar nombre para usarlo al verificar
+    otpStore.set(doc, { email, nombre, pendiente: true });
+
+    // Supabase envía el OTP al correo automáticamente
+    const result = await supabaseRequest('/otp', {
+      email,
+      options: { shouldCreateUser: true }
     });
-    const resultados = await Promise.all(promesas);
-    let telefono = '', nombre = '';
-    resultados.forEach(function(r) {
-      const items = Array.isArray(r) ? r : (r && r.id ? [r] : []);
-      items.forEach(function(c) { if (!telefono && c.phone) { telefono = c.phone; nombre = c.name; } });
-    });
-    if (!telefono) return res.status(404).json({ success: false, message: 'No hay número WhatsApp registrado para este documento.' });
-    const code = Math.floor(100000 + Math.random() * 900000).toString();
-    otpStore.set(doc, { code: code, expires: Date.now() + 120000, attempts: 0, telefono: telefono, nombre: nombre });
-    const msg = '🔐 *CL TIENE — Código de Verificación*\n\nHola ' + nombre + ', tu código de acceso es:\n\n*' + code + '*\n\nVálido por 2 minutos. No lo compartas con nadie.\n\n_MULTISERVICIOS CL TIENE_';
-    const wa = await sendWA(telefono, msg);
-    console.log('[OTP] Enviado a', telefono, '| WA ok:', wa.ok);
-    res.json({ success: true, message: wa.ok ? 'Código enviado por WhatsApp.' : 'Código generado (WhatsApp no disponible).', demo: !wa.ok });
-  } catch(e) {
-    res.status(500).json({ success: false, message: e.message });
-  }
+
+    console.log('[Supabase OTP]', email, '| ok:', result.ok, result.data);
+    if (!result.ok) {
+      const msg = result.data?.msg || result.data?.message || 'Error al enviar OTP';
+      return res.status(500).json({ success: false, message: msg });
+    }
+    res.json({ success: true, message: 'Código enviado a ' + maskEmail(email) });
+  } catch(e) { res.status(500).json({ success: false, message: e.message }); }
 });
 
 app.post('/api/auth/verify-code', async (req, res) => {
-  const doc = req.body.documento, codigo = req.body.codigo;
-  const stored = otpStore.get(doc);
-  if (!stored) return res.status(400).json({ success: false, message: 'No hay código activo. Solicita uno nuevo.' });
-  if (Date.now() > stored.expires) { otpStore.delete(doc); return res.status(400).json({ success: false, message: 'El código expiró. Solicita uno nuevo.' }); }
-  if (stored.attempts >= 3) { otpStore.delete(doc); return res.status(429).json({ success: false, message: 'Demasiados intentos fallidos.' }); }
-  if (stored.code !== String(codigo).trim()) {
-    stored.attempts++;
-    return res.status(400).json({ success: false, message: 'Código incorrecto. Te quedan ' + (3 - stored.attempts) + ' intentos.' });
-  }
-  otpStore.delete(doc);
-  sendWA(stored.telefono, '✅ *CL TIENE*\n\nHola ' + stored.nombre + ', tu identidad fue verificada exitosamente.\n\n_MULTISERVICIOS CL TIENE_');
-  res.json({ success: true, message: 'Autenticación exitosa.', user: { nombre: stored.nombre } });
+  const doc = req.body.documento, codigo = req.body.codigo, email = req.body.email;
+  if (!doc || !codigo || !email)
+    return res.status(400).json({ success: false, message: 'Faltan datos para verificar.' });
+
+  try {
+    // Verificar OTP con Supabase
+    const result = await supabaseRequest('/verify', {
+      email,
+      token: String(codigo).trim(),
+      type: 'email'
+    });
+
+    if (!result.ok) {
+      const msg = result.data?.msg || result.data?.message || 'Código incorrecto o expirado.';
+      return res.status(400).json({ success: false, message: msg });
+    }
+
+    const stored = otpStore.get(doc) || {};
+    otpStore.delete(doc);
+    res.json({ success: true, message: 'Verificación exitosa.', user: { nombre: stored.nombre || '' } });
+  } catch(e) { res.status(500).json({ success: false, message: e.message }); }
 });
 
 // ════════════════════════════════════════════════════════════════════════════
