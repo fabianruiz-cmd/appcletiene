@@ -39,15 +39,23 @@ const SMTP_PASS = process.env.SMTP_PASS || '';
 const SMTP_FROM = process.env.SMTP_FROM || SMTP_USER;
 
 async function sendEmail(to, subject, html) {
-  if (!SMTP_USER || !SMTP_PASS) return { ok: false, err: 'SMTP no configurado' };
+  if (!SMTP_USER || !SMTP_PASS) return { ok: false, err: 'SMTP no configurado: SMTP_USER=' + SMTP_USER + ' SMTP_PASS=' + (SMTP_PASS ? 'OK' : 'VACIO') };
   try {
+    console.log('[SMTP] Enviando a', to, 'via', SMTP_HOST + ':' + SMTP_PORT, 'user:', SMTP_USER);
     const transporter = nodemailer.createTransport({
       host: SMTP_HOST, port: SMTP_PORT, secure: SMTP_PORT === 465,
-      auth: { user: SMTP_USER, pass: SMTP_PASS }
+      auth: { user: SMTP_USER, pass: SMTP_PASS },
+      connectionTimeout: 10000,
+      greetingTimeout: 10000,
+      socketTimeout: 15000
     });
     await transporter.sendMail({ from: '"CL TIENE" <' + SMTP_FROM + '>', to, subject, html });
+    console.log('[SMTP] Enviado OK a', to);
     return { ok: true };
-  } catch(e) { return { ok: false, err: e.message }; }
+  } catch(e) {
+    console.error('[SMTP] Error:', e.message);
+    return { ok: false, err: e.message };
+  }
 }
 
 function getCfg(env) { return env === 'qa' ? QA : PROD; }
