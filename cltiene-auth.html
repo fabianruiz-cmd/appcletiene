@@ -337,7 +337,7 @@ async function paso3() {
   try {
     const res = await fetch('/api/auth/verify-code', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ documento: estado.doc, codigo: code, email: estado.email })
+      body: JSON.stringify({ documento: estado.doc, codigo: code })
     });
     const data = await res.json();
     if (!data.success) { err.textContent = data.message; err.classList.add('show'); return; }
