@@ -1,539 +1,479 @@
-require('dotenv').config();
-const express = require('express');
-const path    = require('path');
-const app     = express();
-const PORT = process.env.PORT || process.env.RAILWAY_PORT || 8080;
-console.log("[DEBUG] process.env.PORT =", process.env.PORT);
-console.log("[DEBUG] PORT final =", PORT);
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>CL TIENE — Acceso</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet"/>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Inter', sans-serif;
+      background: #07090f;
+      color: #e8eaf2;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      transition: background .3s, color .3s;
+    }
+    body.light-mode { background: #f0f2f5; color: #1a202c; }
+    body.light-mode .card { background: #ffffff; border-color: #dde1ea; }
+    body.light-mode .field input { background: #f8fafc; border-color: #dde1ea; color: #1a202c; }
+    body.light-mode h1 { color: #1a202c; }
+    body.light-mode .subtitle { color: #64748b; }
+    body.light-mode .card-title { color: #1a202c; }
+    body.light-mode .card-sub { color: #64748b; }
+    body.light-mode .field label { color: #64748b; }
+    body.light-mode .step-indicator span { background: #e2e8f0; color: #64748b; }
+    body.light-mode .step-indicator span.active { background: #0d7a5f; color: #fff; }
+    body.light-mode .info-box { background: #f0fdf4; border-color: #0d7a5f40; color: #0d7a5f; }
+    body.light-mode .otp-inputs input { background: #f8fafc; border-color: #dde1ea; color: #1a202c; }
 
-// ── Configuración ─────────────────────────────────────────────────────────────
-const ENV        = process.env.WIP_ENV || 'prod'; // 'prod' o 'qa'
+    .btn-modo {
+      position: fixed; top: 16px; right: 16px;
+      background: transparent; border: 1px solid rgba(255,255,255,.2);
+      color: rgba(255,255,255,.6); padding: 6px 12px;
+      border-radius: 8px; font-size: 12px; cursor: pointer;
+      font-family: 'Inter', sans-serif; transition: all .2s;
+    }
+    body.light-mode .btn-modo { border-color: #dde1ea; color: #64748b; }
 
-const PROD = {
-  BASE:       'https://api.wiptool.com',
-  KEY:        process.env.WIP_API_KEY    || 'xWjGb5Zt84g4YEBEe4C8ZxNWkVswJg7ZRbkLwJeQ',
-  COMPANY_ID: process.env.WIP_COMPANY_ID || '67379dff213b73f99523f061',
-  USER_ID:    process.env.WIP_USER_ID    || '67a0dcadba440e5f0db90ccc',
-  OWNER_ID:   process.env.WIP_OWNER_ID   || '67379dff213b73f99523f061',
-  OWNER_NAME: process.env.WIP_OWNER_NAME || 'MULTISERVICIOS CL TIENE',
-};
+    .container { width: 100%; max-width: 440px; text-align: center; }
+    .logo-wrap { margin-bottom: 28px; }
+    .logo-wrap img { height: 64px; object-fit: contain; }
 
-const QA = {
-  BASE:       'https://qa.wiptool.com',
-  KEY:        process.env.WIP_QA_KEY        || 'x1uTTQSjgy3St7ncMFN4dqp7fHE2dGg5UENHEXfR',
-  COMPANY_ID: process.env.WIP_QA_COMPANY_ID || '672e63786550243020775186',
-  USER_ID:    process.env.WIP_QA_USER_ID    || '69a74c1f2624f11af97b6283',
-  OWNER_ID:   process.env.WIP_QA_OWNER_ID   || '672e63786550243020775186',
-  OWNER_NAME: process.env.WIP_QA_OWNER_NAME || 'CL tiene',
-};
+    /* Steps indicator */
+    .step-indicator {
+      display: flex; align-items: center; justify-content: center;
+      gap: 0; margin-bottom: 28px;
+    }
+    .step-indicator span {
+      width: 28px; height: 28px; border-radius: 50%;
+      background: #1e2535; color: #5a6580;
+      font-size: 12px; font-weight: 700;
+      display: flex; align-items: center; justify-content: center;
+      transition: all .3s;
+    }
+    .step-indicator span.active { background: #0d7a5f; color: #fff; }
+    .step-indicator span.done { background: #0d7a5f30; color: #0d7a5f; }
+    .step-indicator .line {
+      width: 40px; height: 2px;
+      background: #1e2535; transition: background .3s;
+    }
+    .step-indicator .line.done { background: #0d7a5f40; }
 
-const WA_URL   = process.env.WHAPI_URL   || 'https://gate.whapi.cloud';
-const WA_TOKEN = process.env.WHAPI_TOKEN || 'WwW3UAz2x6iJ0nasEd7ar5WFoVsxnGpc';
+    h1 { font-size: 24px; font-weight: 800; color: #e8eaf2; margin-bottom: 6px; }
+    .subtitle { font-size: 13px; color: #5a6580; line-height: 1.6; margin-bottom: 24px; }
 
-// ── Supabase Auth — OTP por email (sin dominio, sin SMTP) ────────────────────
-const SUPABASE_URL      = process.env.SUPABASE_URL      || '';
-const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY || '';
+    .card {
+      background: #111318; border: 1px solid #1e2535;
+      border-radius: 20px; padding: 28px 24px; text-align: left;
+    }
+    .card-title { font-size: 15px; font-weight: 700; color: #e8eaf2; margin-bottom: 4px; }
+    .card-sub { font-size: 12px; color: #5a6580; margin-bottom: 18px; line-height: 1.5; }
 
-async function supabaseRequest(path, body) {
-  const nodeFetch = (await import('node-fetch')).default;
-  const res = await nodeFetch(SUPABASE_URL + '/auth/v1' + path, {
-    method: 'POST',
-    headers: {
-      'apikey': SUPABASE_ANON_KEY,
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify(body)
-  });
-  const data = await res.json();
-  return { ok: res.ok, status: res.status, data };
-}
+    .field { margin-bottom: 14px; }
+    .field label { display: block; font-size: 11px; font-weight: 600; color: #7080a0; text-transform: uppercase; letter-spacing: .5px; margin-bottom: 6px; }
+    .field input {
+      width: 100%; border: 1.5px solid #1e2535; border-radius: 12px;
+      padding: 13px 16px; font-size: 15px; font-family: 'Inter', sans-serif;
+      color: #e8eaf2; background: #0e1117; outline: none; transition: border-color .15s;
+    }
+    .field input:focus { border-color: #0d7a5f; }
+    .field input::placeholder { color: #2a3550; }
 
-function getCfg(env) { return env === 'qa' ? QA : PROD; }
+    /* OTP inputs */
+    .otp-inputs {
+      display: flex; gap: 10px; justify-content: center; margin: 16px 0;
+    }
+    .otp-inputs input {
+      width: 48px; height: 56px; border: 1.5px solid #1e2535; border-radius: 12px;
+      background: #0e1117; color: #e8eaf2; font-size: 22px; font-weight: 700;
+      text-align: center; outline: none; transition: border-color .15s;
+      font-family: 'Inter', sans-serif; caret-color: #0d7a5f;
+    }
+    .otp-inputs input:focus { border-color: #0d7a5f; }
+    .otp-inputs input.filled { border-color: #0d7a5f30; background: #0d7a5f10; }
 
-// Aliases para compatibilidad
-const COMPANY_ID = PROD.COMPANY_ID;
-const USER_ID    = PROD.USER_ID;
+    .btn {
+      width: 100%; padding: 14px; border-radius: 12px; border: none;
+      font-family: 'Inter', sans-serif; font-weight: 700; font-size: 15px;
+      cursor: pointer; transition: all .15s;
+      display: flex; align-items: center; justify-content: center; gap: 8px;
+      background: #0d7a5f; color: #fff; margin-top: 4px;
+    }
+    .btn:hover { background: #0a6650; }
+    .btn:disabled { opacity: .4; cursor: not-allowed; }
+    .btn-ghost {
+      background: transparent; border: 1.5px solid #1e2535; color: #5a6580;
+      font-size: 13px; padding: 10px; margin-top: 8px;
+    }
+    .btn-ghost:hover { border-color: #0d7a5f40; color: #0d7a5f; background: transparent; }
 
-app.use(express.json());
+    .info-box {
+      background: #0d7a5f15; border: 1px solid #0d7a5f30;
+      border-radius: 10px; padding: 12px 14px;
+      font-size: 13px; color: #0d7a5f; margin-bottom: 14px;
+      display: flex; align-items: center; gap: 8px;
+    }
 
-// ── HTML Routes ───────────────────────────────────────────────────────────────
-app.get('/', (req, res) => {
-  // Si viene con cédula en URL, mostrar dashboard
-  if (req.query.cedula) {
-    return res.sendFile(path.join(__dirname, 'wip-dashboard.html'));
-  }
-  // Si no, redirigir al login
-  res.redirect('/auth');
-});
-app.get('/wip-dashboard.html', (req, res) => {
-  res.set('Cache-Control', 'no-store, no-cache, must-revalidate');
-  res.sendFile(path.join(__dirname, 'wip-dashboard.html'));
-});
-app.get('/auth', (req, res) => {
-  res.set('Cache-Control', 'no-store, no-cache, must-revalidate');
-  res.sendFile(path.join(__dirname, 'cltiene-auth.html'));
-});
-app.get('/cltiene-auth.html',  (req, res) => res.sendFile(path.join(__dirname, 'cltiene-auth.html')));
+    .alert { padding: 10px 14px; border-radius: 10px; font-size: 13px; margin-bottom: 12px; display: none; }
+    .alert.show { display: block; }
+    .alert-err { background: rgba(239,68,68,.1); border: 1px solid rgba(239,68,68,.3); color: #f87171; }
+    .alert-ok  { background: rgba(13,122,95,.1);  border: 1px solid rgba(13,122,95,.3);  color: #34d399; }
 
-// ── Helper WIP ────────────────────────────────────────────────────────────────
-async function wipFetch(wipPath, method, body, env) {
-  method = method || 'GET';
-  env    = env    || 'prod';
-  const cfg = getCfg(env);
-  const nodeFetch = (await import('node-fetch')).default;
-  const opts = {
-    method,
-    headers: { 'Authorization': cfg.KEY, 'Content-Type': 'application/json' }
-  };
-  if (body) opts.body = JSON.stringify(body);
-  const url = cfg.BASE + wipPath;
-  console.log('[WIP][' + env.toUpperCase() + ']', method, wipPath, body ? JSON.stringify(body).slice(0,100) : '');
-  const res  = await nodeFetch(url, opts);
-  const text = await res.text();
-  console.log('[WIP] →', res.status, text.slice(0, 300));
-  let data;
-  try { data = JSON.parse(text); } catch(e) { data = { raw: text }; }
-  return { ok: res.ok, status: res.status, data: data };
-}
+    .loader { width: 16px; height: 16px; border: 2px solid rgba(255,255,255,.3); border-top-color: #fff; border-radius: 50%; animation: spin .6s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
 
-// ── Helper WhatsApp ───────────────────────────────────────────────────────────
-async function sendWA(tel, msg) {
-  if (!tel) return { ok: false };
+    .timer { font-size: 12px; color: #5a6580; text-align: center; margin-top: 10px; }
+    .timer span { color: #0d7a5f; font-weight: 600; }
+
+    .panel { display: none; }
+    .panel.active { display: block; }
+
+    @media (max-width: 480px) {
+      h1 { font-size: 20px; }
+      .card { padding: 22px 16px; }
+      .otp-inputs input { width: 42px; height: 50px; font-size: 20px; }
+    }
+  </style>
+</head>
+<body>
+<button class="btn-modo" id="btn-modo" onclick="toggleModo()">🌙 Oscuro</button>
+
+<div class="container">
+  <div class="logo-wrap">
+    <img id="auth-logo"
+         src="https://cltiene.com/wp-content/uploads/2026/01/e0280ba2b169453b2ae09ecf07c2b8d01673e12b.png"
+         alt="CL TIENE"
+         onerror="this.outerHTML='<div style=\'font-size:26px;font-weight:800;color:#e8eaf2\'>CL<span style=\'color:#0d7a5f\'>TIENE</span></div>'"/>
+  </div>
+
+  <!-- Indicador de pasos -->
+  <div class="step-indicator" id="steps">
+    <span id="s1" class="active">1</span>
+    <div class="line" id="l1"></div>
+    <span id="s2">2</span>
+    <div class="line" id="l2"></div>
+    <span id="s3">3</span>
+  </div>
+
+  <!-- PASO 1: Ingresar cédula -->
+  <div class="panel active" id="panel-1">
+    <h1>Bienvenido</h1>
+    <p class="subtitle">Ingresa tu número de cédula para continuar.</p>
+    <div class="card">
+      <p class="card-title">Número de documento</p>
+      <p class="card-sub">Te enviaremos un código de verificación a tu correo registrado.</p>
+      <div class="alert alert-err" id="err-1"></div>
+      <div class="field">
+        <label>Cédula</label>
+        <input type="text" id="inp-doc" placeholder="Ej. 1000988807" maxlength="15"
+               onkeydown="if(event.key==='Enter') paso1()"/>
+      </div>
+      <button class="btn" id="btn-1" onclick="paso1()">
+        Continuar →
+      </button>
+    </div>
+  </div>
+
+  <!-- PASO 2: Confirmar / ingresar correo -->
+  <div class="panel" id="panel-2">
+    <h1>Verificar correo</h1>
+    <p class="subtitle" id="sub-2">Confirma tu correo electrónico.</p>
+    <div class="card">
+      <p class="card-title" id="title-2">Correo electrónico</p>
+      <p class="card-sub" id="desc-2">Te enviaremos un código de 6 dígitos.</p>
+      <div class="alert alert-err" id="err-2"></div>
+      <div class="info-box" id="email-confirm-box" style="display:none">
+        <span>📧</span>
+        <span>Enviaremos el código a <strong id="email-masked"></strong></span>
+      </div>
+      <div class="field" id="email-input-field" style="display:none">
+        <label>Tu correo electrónico</label>
+        <input type="email" id="inp-email" placeholder="correo@ejemplo.com"
+               onkeydown="if(event.key==='Enter') paso2()"/>
+      </div>
+      <button class="btn" id="btn-2" onclick="paso2()">
+        Enviar código →
+      </button>
+      <button class="btn btn-ghost" onclick="volverPaso1()">← Cambiar cédula</button>
+    </div>
+  </div>
+
+  <!-- PASO 3: Ingresar OTP -->
+  <div class="panel" id="panel-3">
+    <h1>Ingresa el código</h1>
+    <p class="subtitle" id="sub-3">Código enviado a tu correo.</p>
+    <div class="card">
+      <p class="card-title">Código de verificación</p>
+      <p class="card-sub">Ingresa los 6 dígitos que recibiste. Válido por 5 minutos.</p>
+      <div class="alert alert-err" id="err-3"></div>
+      <div class="alert alert-ok"  id="ok-3"></div>
+      <div class="otp-inputs" id="otp-inputs">
+        <input type="text" maxlength="1" inputmode="numeric" onkeyup="otpKeyUp(this,0)" onpaste="otpPaste(event)"/>
+        <input type="text" maxlength="1" inputmode="numeric" onkeyup="otpKeyUp(this,1)"/>
+        <input type="text" maxlength="1" inputmode="numeric" onkeyup="otpKeyUp(this,2)"/>
+        <input type="text" maxlength="1" inputmode="numeric" onkeyup="otpKeyUp(this,3)"/>
+        <input type="text" maxlength="1" inputmode="numeric" onkeyup="otpKeyUp(this,4)"/>
+        <input type="text" maxlength="1" inputmode="numeric" onkeyup="otpKeyUp(this,5)"/>
+      </div>
+      <button class="btn" id="btn-3" onclick="paso3()">
+        Verificar →
+      </button>
+      <div class="timer" id="timer-wrap">
+        Reenviar código en <span id="timer-count">5:00</span>
+      </div>
+      <button class="btn btn-ghost" id="btn-reenviar" onclick="reenviarCodigo()" style="display:none">
+        Reenviar código
+      </button>
+      <button class="btn btn-ghost" onclick="volverPaso2()" style="margin-top:0">← Cambiar correo</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── Estado ────────────────────────────────────────────────────────────────────
+let estado = { doc: '', nombre: '', email: '', emailWIP: '' };
+let timerInterval = null;
+
+// ── Paso 1: Validar documento ──────────────────────────────────────────────────
+async function paso1() {
+  const doc = document.getElementById('inp-doc').value.trim();
+  const err = document.getElementById('err-1');
+  err.classList.remove('show');
+  if (!doc) { err.textContent = 'Ingresa tu número de cédula.'; err.classList.add('show'); return; }
+
+  setLoading('btn-1', true, 'Verificando...');
   try {
-    const nodeFetch = (await import('node-fetch')).default;
-    let num = tel.toString().replace(/[\s\-\+\(\)]/g, '');
-    if (num.length === 10) num = '57' + num;
-    if (!num.startsWith('57')) num = '57' + num;
-    const res = await nodeFetch(WA_URL + '/messages/text', {
-      method: 'POST',
-      headers: { 'Authorization': 'Bearer ' + WA_TOKEN, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ to: num + '@s.whatsapp.net', body: msg })
+    const res = await fetch('/api/auth/validate-document', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ documento: doc })
     });
     const data = await res.json();
-    console.log('[WA]', num, res.status);
-    return { ok: res.ok, data: data };
-  } catch(e) {
-    console.error('[WA Error]', e.message);
-    return { ok: false };
-  }
-}
+    if (!data.success) { err.textContent = data.message; err.classList.add('show'); return; }
 
-// ── OTP Store ─────────────────────────────────────────────────────────────────
-const otpStore = new Map();
+    estado.doc = doc;
+    estado.nombre = data.user?.nombre || '';
+    estado.emailWIP = data.user?.emailMasked || '';
 
-// ── Buscar cliente en todas las BUs ───────────────────────────────────────────
-async function buscarClienteWIP(doc, env) {
-  const cfg = getCfg(env);
-  const buRes = await wipFetch('/business/api/v1/BusinessUnit/company/' + cfg.COMPANY_ID + '/business-units/services', 'GET', null, env);
-  const buIds = (buRes.data.businessUnits || []).map(function(b) { return b.id; });
-  const nodeFetch = (await import('node-fetch')).default;
-  const promesas = buIds.map(function(buId) {
-    return nodeFetch(cfg.BASE + '/Customer/api/v1/Customer/Subscription?companyId=' + cfg.COMPANY_ID + '&businessUnitId=' + buId + '&searchTerm=' + encodeURIComponent(doc), {
-      headers: { 'Authorization': cfg.KEY, 'Content-Type': 'application/json' }
-    }).then(function(r) { return r.json(); }).catch(function() { return null; });
-  });
-  const resultados = await Promise.all(promesas);
-  const vistos = new Map();
-  resultados.forEach(function(r) {
-    const items = Array.isArray(r) ? r : (r && r.id ? [r] : []);
-    items.forEach(function(c) { if (!vistos.has(c.id)) vistos.set(c.id, c); });
-  });
-  return [...vistos.values()];
-}
-
-function maskEmail(email) {
-  const parts = email.split('@');
-  const user = parts[0], domain = parts[1];
-  const visible = user.length > 3 ? user.slice(0, 3) : user.slice(0, 1);
-  return visible + '***@' + domain;
-}
-
-async function enviarOTPEmail(email, nombre, code) {
-  const html = `
-  <div style="font-family:Arial,sans-serif;max-width:480px;margin:0 auto;padding:32px;background:#f8fafc;border-radius:12px">
-    <div style="text-align:center;margin-bottom:24px">
-      <img src="https://cltiene.com/wp-content/uploads/2025/10/logo-CL.png" height="48" alt="CL TIENE" style="max-height:48px"/>
-    </div>
-    <h2 style="color:#0d7a5f;text-align:center;margin-bottom:8px">Código de Verificación</h2>
-    <p style="color:#475569;text-align:center;margin-bottom:28px">Hola <strong>${nombre}</strong>, usa este código para acceder a tu panel:</p>
-    <div style="background:#fff;border:2px solid #0d7a5f;border-radius:12px;padding:24px;text-align:center;margin-bottom:24px">
-      <span style="font-size:38px;font-weight:800;letter-spacing:10px;color:#0d7a5f">${code}</span>
-    </div>
-    <p style="color:#94a3b8;font-size:12px;text-align:center">Válido por <strong>5 minutos</strong>. No lo compartas con nadie.</p>
-    <hr style="border:none;border-top:1px solid #e2e8f0;margin:24px 0"/>
-    <p style="color:#cbd5e1;font-size:11px;text-align:center">MULTISERVICIOS CL TIENE — Panel de Servicios</p>
-  </div>`;
-  return sendEmail(email, '🔐 Tu código de acceso — CL TIENE', html);
-}
-
-// ════════════════════════════════════════════════════════════════════════════
-// AUTH — OTP por Email
-// ════════════════════════════════════════════════════════════════════════════
-
-app.post('/api/auth/validate-document', async (req, res) => {
-  const doc = req.body.documento, env = req.body.env || 'prod';
-  if (!doc) return res.status(400).json({ success: false, message: 'Documento requerido' });
-  try {
-    const clientes = await buscarClienteWIP(doc, env);
-    if (!clientes.length) return res.status(404).json({ success: false, message: 'Documento no encontrado en el sistema.' });
-    let email = '', nombre = '';
-    clientes.forEach(function(c) {
-      if (!email && c.email) email = c.email;
-      if (!nombre && c.name) nombre = c.name;
-    });
-    res.json({ success: true, user: { nombre, tieneEmail: !!email, emailMasked: email ? maskEmail(email) : null } });
-  } catch(e) { res.status(500).json({ success: false, message: e.message }); }
-});
-
-app.post('/api/auth/send-code', async (req, res) => {
-  const doc = req.body.documento, email = req.body.email, env = req.body.env || 'prod';
-  if (!doc)   return res.status(400).json({ success: false, message: 'Documento requerido' });
-  if (!email) return res.status(400).json({ success: false, message: 'Correo electrónico requerido' });
-  if (!SUPABASE_URL || !SUPABASE_ANON_KEY)
-    return res.status(500).json({ success: false, message: 'Supabase no configurado en el servidor.' });
-
-  try {
-    const clientes = await buscarClienteWIP(doc, env);
-    if (!clientes.length) return res.status(404).json({ success: false, message: 'Documento no encontrado.' });
-    let nombre = '';
-    clientes.forEach(function(c) { if (!nombre && c.name) nombre = c.name; });
-
-    // Guardar nombre para usarlo al verificar
-    otpStore.set(doc, { email, nombre, pendiente: true });
-
-    // Supabase envía el OTP al correo automáticamente
-    const result = await supabaseRequest('/otp', {
-      email,
-      options: { shouldCreateUser: true }
-    });
-
-    console.log('[Supabase OTP]', email, '| ok:', result.ok, result.data);
-    if (!result.ok) {
-      const msg = result.data?.msg || result.data?.message || 'Error al enviar OTP';
-      return res.status(500).json({ success: false, message: msg });
-    }
-    res.json({ success: true, message: 'Código enviado a ' + maskEmail(email) });
-  } catch(e) { res.status(500).json({ success: false, message: e.message }); }
-});
-
-app.post('/api/auth/verify-code', async (req, res) => {
-  const doc = req.body.documento, codigo = req.body.codigo, email = req.body.email;
-  if (!doc || !codigo || !email)
-    return res.status(400).json({ success: false, message: 'Faltan datos para verificar.' });
-
-  try {
-    // Verificar OTP con Supabase
-    const result = await supabaseRequest('/verify', {
-      email,
-      token: String(codigo).trim(),
-      type: 'email'
-    });
-
-    if (!result.ok) {
-      const msg = result.data?.msg || result.data?.message || 'Código incorrecto o expirado.';
-      return res.status(400).json({ success: false, message: msg });
-    }
-
-    const stored = otpStore.get(doc) || {};
-    otpStore.delete(doc);
-    res.json({ success: true, message: 'Verificación exitosa.', user: { nombre: stored.nombre || '' } });
-  } catch(e) { res.status(500).json({ success: false, message: e.message }); }
-});
-
-// ════════════════════════════════════════════════════════════════════════════
-// WIP PROXY — Todos los endpoints
-// ════════════════════════════════════════════════════════════════════════════
-
-// 1. Unidades de negocio
-app.get('/wip/business-units', async (req, res) => {
-  const env = req.query.env || 'prod';
-  const cfg = getCfg(env);
-  try {
-    const r = await wipFetch('/business/api/v1/BusinessUnit/company/' + cfg.COMPANY_ID + '/business-units/services', 'GET', null, env);
-    res.status(r.status).json(r.data);
-  } catch(e) { res.status(500).json({ message: e.message }); }
-});
-
-// 2. Buscar servicios — page empieza en 1 (doc WIP v2.3)
-app.post('/wip/services/search', async (req, res) => {
-  const env = req.body.env || 'prod';
-  const cfg = getCfg(env);
-  try {
-    const subject        = req.body.subject        || '';
-    const businessUnitId = req.body.businessUnitId || '';
-    const pageSize       = req.body.pageSize       || 50;
-    const page           = req.body.page           || 1; // ⚠️ WIP usa page 1-indexed
-    const sort           = req.body.sort           || 'scheduledDate';
-    const sortDirection  = req.body.sortDirection  || 'Desc';
-
-    // Obtener todos los BUs (businessUnitId es obligatorio)
-    let buIds = [];
-    if (businessUnitId) {
-      buIds = [businessUnitId];
+    // Preparar paso 2
+    if (data.user?.tieneEmail) {
+      // Tiene email registrado
+      document.getElementById('title-2').textContent = 'Confirmación de correo';
+      document.getElementById('desc-2').textContent = 'Enviaremos el código a tu correo registrado en el sistema.';
+      document.getElementById('sub-2').textContent = 'Hola ' + (estado.nombre || doc) + ', confirma tu correo.';
+      document.getElementById('email-masked').textContent = data.user.emailMasked;
+      document.getElementById('email-confirm-box').style.display = 'flex';
+      document.getElementById('email-input-field').style.display = 'none';
+      estado.email = '___wip___'; // señal de usar email de WIP
     } else {
-      const buRes = await wipFetch('/business/api/v1/BusinessUnit/company/' + cfg.COMPANY_ID + '/business-units/services', 'GET', null, env);
-      buIds = (buRes.data.businessUnits || []).map(function(b) { return b.id; });
+      // No tiene email, pedir que ingrese
+      document.getElementById('title-2').textContent = 'Ingresa tu correo';
+      document.getElementById('desc-2').textContent = 'No tenemos correo registrado para tu documento. Ingresa uno para recibir el código.';
+      document.getElementById('sub-2').textContent = 'Hola ' + (estado.nombre || doc) + ', necesitamos tu correo.';
+      document.getElementById('email-confirm-box').style.display = 'none';
+      document.getElementById('email-input-field').style.display = 'block';
+      estado.email = '';
     }
-
-    console.log('[SEARCH] BUs:', buIds.length, '| subject:', subject, '| page:', page);
-
-    // Buscar en paralelo en cada BU
-    const promesas = buIds.map(function(buId) {
-      const body = {
-        pageSize: pageSize,
-        page: page,
-        sort: sort,
-        sortDirection: sortDirection,
-        companyId: cfg.COMPANY_ID,
-        userId: cfg.USER_ID,
-        businessUnitId: buId,
-        subject: subject
-      };
-      return wipFetch('/service/api/v1/Service/search', 'POST', body, env)
-        .then(function(r) { return (r.data && r.data.data) ? r.data.data : []; })
-        .catch(function() { return []; });
-    });
-
-    const resultados = await Promise.all(promesas);
-
-    // Combinar y deduplicar
-    const seen = new Set();
-    const data = [];
-    resultados.forEach(function(arr) {
-      arr.forEach(function(s) {
-        if (s && s.id && !seen.has(s.id)) { seen.add(s.id); data.push(s); }
-      });
-    });
-    data.sort(function(a,b) { return new Date(b.scheduledDate||0) - new Date(a.scheduledDate||0); });
-    console.log('[SEARCH] Total:', data.length);
-    res.json({ data: data, totalRows: data.length });
+    irPaso(2);
   } catch(e) {
-    console.error('[SEARCH]', e.message);
-    res.status(500).json({ message: e.message });
+    err.textContent = 'Error de conexión. Intenta de nuevo.';
+    err.classList.add('show');
+  } finally { setLoading('btn-1', false, 'Continuar →'); }
+}
+
+// ── Paso 2: Enviar código ─────────────────────────────────────────────────────
+async function paso2() {
+  const err = document.getElementById('err-2');
+  err.classList.remove('show');
+
+  let emailDestino = estado.email;
+  if (emailDestino === '___wip___') {
+    // Usar email de WIP — el servidor ya lo tiene
+    emailDestino = document.getElementById('email-masked').textContent;
+  } else {
+    // Email ingresado por el usuario
+    emailDestino = document.getElementById('inp-email').value.trim();
+    if (!emailDestino || !emailDestino.includes('@')) {
+      err.textContent = 'Ingresa un correo válido.'; err.classList.add('show'); return;
+    }
+    estado.email = emailDestino;
   }
-});
 
-// 3. Crear servicio + notificación WhatsApp
-app.post('/wip/services/create', async (req, res) => {
-  const env = req.body.env || 'prod';
-  const cfg = getCfg(env);
+  setLoading('btn-2', true, 'Enviando...');
   try {
-    const body = Object.assign({}, req.body);
-    delete body.env;
-    // Asegurar owner y buOwner con los IDs correctos
-    body.owner    = body.owner    || { id: cfg.OWNER_ID, name: cfg.OWNER_NAME, type: 'Owner' };
-    body.buOwner  = body.buOwner  || { id: cfg.OWNER_ID, name: cfg.OWNER_NAME, type: 'BuOwner' };
-    body.creatorUser = body.creatorUser || { id: cfg.USER_ID, name: cfg.OWNER_NAME };
+    const res = await fetch('/api/auth/send-code', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ documento: estado.doc, email: emailDestino })
+    });
+    const data = await res.json();
+    if (!data.success) { err.textContent = data.message; err.classList.add('show'); return; }
 
-    const r = await wipFetch('/service/api/v2/Service/' + cfg.COMPANY_ID + '/service/' + cfg.USER_ID, 'POST', body, env);
-    if (r.ok) {
-      const tel    = body.userClientePhone || body.userPhone || '';
-      const nombre = body.finalClientName  || body.userName  || 'Cliente';
-      const tipo   = body.type || 'Servicio';
-      const exp    = r.data.wipExpedient   || r.data.id      || '';
-      const fecha  = body.scheduledDate ? new Date(body.scheduledDate).toLocaleString('es-CO', { timeZone: 'America/Bogota', dateStyle: 'medium', timeStyle: 'short' }) : '';
-      if (tel) {
-        sendWA(tel, '✅ *CL TIENE — Servicio Registrado*\n\nHola ' + nombre + ',\n\n📋 *Expediente:* ' + exp + '\n🔧 *Servicio:* ' + tipo + '\n📅 *Fecha:* ' + fecha + '\n\nNuestro equipo se pondrá en contacto contigo pronto.\n\n_MULTISERVICIOS CL TIENE_');
-      }
-    }
-    res.status(r.status).json(r.data);
-  } catch(e) { res.status(500).json({ message: e.message }); }
-});
-
-// 4. Buscar servicio por ID
-app.get('/wip/services/:id', async (req, res) => {
-  const env = req.query.env || 'prod';
-  try {
-    const r = await wipFetch('/service/api/v1/Service/' + req.params.id, 'GET', null, env);
-    res.status(r.status).json(r.data);
-  } catch(e) { res.status(500).json({ message: e.message }); }
-});
-
-// 5. Suscripciones por documento o placa
-app.get('/wip/subscriptions', async (req, res) => {
-  const env  = req.query.env || 'prod';
-  const cfg  = getCfg(env);
-  const buId = req.query.businessUnitId || '';
-  const term = req.query.searchTerm     || '';
-  try {
-    const r = await wipFetch('/Customer/api/v1/Customer/Subscription?companyId=' + cfg.COMPANY_ID + '&businessUnitId=' + buId + '&searchTerm=' + encodeURIComponent(term), 'GET', null, env);
-    res.status(r.status).json(r.data);
-  } catch(e) { res.status(500).json({ message: e.message }); }
-});
-
-// 6. Detalle de suscripción
-app.post('/wip/subscriptions/detail', async (req, res) => {
-  const env = req.body.env || 'prod';
-  const cfg = getCfg(env);
-  try {
-    const r = await wipFetch('/Customer/api/v1/Customer/Subscription/Consumption', 'POST', {
-      customerId:     req.body.customerId,
-      businessUnitId: req.body.businessUnitId,
-      timeZone:       'America/Bogota',
-      companyId:      cfg.COMPANY_ID
-    }, env);
-    res.status(r.status).json(r.data);
-  } catch(e) { res.status(500).json({ message: e.message }); }
-});
-
-// 7. WebHook actualización de estado + WhatsApp
-app.post('/wip/webhook', async (req, res) => {
-  const env = req.body.env || 'prod';
-  try {
-    const body = Object.assign({}, req.body);
-    delete body.env;
-    const r = await wipFetch('/status', 'POST', body, env);
-    const tel = body.userClientePhone || '';
-    if (tel) {
-      const statusMap = {
-        Pending:    '🕐 *Pendiente* — Tu servicio está en espera de asignación.',
-        InProgress: '🔧 *En Progreso* — Un técnico está atendiendo tu solicitud.',
-        Done:       '✅ *Finalizado* — Tu servicio ha sido completado exitosamente.',
-        Cancelled:  '❌ *Cancelado* — Tu servicio fue cancelado.'
-      };
-      sendWA(tel, '📡 *CL TIENE — Actualización*\n\n' + (statusMap[body.status] || body.status) + '\n\nExpediente: ' + (body.wipExpedient || body.id || '') + '\n\n_MULTISERVICIOS CL TIENE_');
-    }
-    res.status(r.status).json(r.data);
-  } catch(e) { res.status(500).json({ message: e.message }); }
-});
-
-// 8. ⭐ NUEVO — Crear o actualizar customer
-app.post('/wip/customers', async (req, res) => {
-  const env = req.body.env || 'prod';
-  const cfg = getCfg(env);
-  try {
-    const body = Object.assign({}, req.body);
-    delete body.env;
-    body.companyId = body.companyId || cfg.COMPANY_ID;
-    const r = await wipFetch('/api/v1/Customer', 'POST', body, env);
-    res.status(r.status).json(r.data);
-  } catch(e) { res.status(500).json({ message: e.message }); }
-});
-
-// 9. ⭐ NUEVO — Eliminar customer
-app.delete('/wip/customers/:id', async (req, res) => {
-  const env = req.query.env || 'prod';
-  try {
-    const r = await wipFetch('/api/v1/Customer/' + req.params.id, 'POST', null, env);
-    res.status(r.status).json(r.data || { success: true });
-  } catch(e) { res.status(500).json({ message: e.message }); }
-});
-
-// ── Health check ──────────────────────────────────────────────────────────────
-
-// Traer todos los suscriptores — usa el mismo patrón del endpoint de servicios que funciona
-app.get('/wip/subscriptions/all', async (req, res) => {
-  try {
-    const cfg = getCfg('prod');
-
-    // 1. Obtener BUs
-    const buRes = await wipFetch('/business/api/v1/BusinessUnit/company/' + cfg.COMPANY_ID + '/business-units/services', 'GET', null, 'prod');
-    const buList = (buRes.data.businessUnits || []).map(b => ({ id: b.id, name: b.name }));
-    console.log('[SUBS/ALL] BUs:', buList.length);
-
-    // 2. Extraer documentos únicos buscando servicios por BU (mismo patrón que funciona)
-    const documentos = new Set();
-    const servicePromesas = [];
-
-    for (const bu of buList) {
-      for (let page = 1; page <= 15; page++) {
-        servicePromesas.push(
-          wipFetch('/service/api/v1/Service/search', 'POST', {
-            pageSize: 50,
-            page: page,
-            sort: 'scheduledDate',
-            sortDirection: 'Desc',
-            companyId: cfg.COMPANY_ID,
-            userId: cfg.USER_ID,
-            businessUnitId: bu.id,
-            subject: ''
-          }, 'prod').then(r => {
-            const rows = (r.data && r.data.data) ? r.data.data : [];
-            rows.forEach(s => { if (s.customerDocument) documentos.add(s.customerDocument.trim()); });
-            return rows.length;
-          }).catch(() => 0)
-        );
-      }
-    }
-
-    await Promise.all(servicePromesas);
-    console.log('[SUBS/ALL] Documentos únicos extraídos:', documentos.size);
-
-    // 3. Para cada documento, buscar suscripciones en todas las BUs en paralelo
-    const seen = new Set();
-    const subs = [];
-    const docArray = Array.from(documentos);
-
-    const subPromesas = docArray.flatMap(doc =>
-      buList.map(bu =>
-        wipFetch('/Customer/api/v1/Customer/Subscription?companyId=' + cfg.COMPANY_ID + '&businessUnitId=' + bu.id + '&searchTerm=' + encodeURIComponent(doc), 'GET', null, 'prod')
-          .then(r => {
-            const items = Array.isArray(r.data) ? r.data : (r.data && r.data.id ? [r.data] : []);
-            items.forEach(s => {
-              const key = (s.documentId || s.id) + bu.id;
-              if (!seen.has(key)) { seen.add(key); subs.push({ ...s, buId: bu.id, buName: bu.name }); }
-            });
-          }).catch(() => {})
-      )
-    );
-
-    await Promise.all(subPromesas);
-    console.log('[SUBS/ALL] Total suscriptores:', subs.length);
-    res.json({ total: subs.length, data: subs });
-
+    document.getElementById('sub-3').textContent = data.message;
+    irPaso(3);
+    iniciarTimer(300);
+    setTimeout(() => document.querySelector('#otp-inputs input').focus(), 200);
   } catch(e) {
-    console.error('[SUBS/ALL] Error:', e.message);
-    res.status(500).json({ message: e.message });
+    err.textContent = 'Error de conexión. Intenta de nuevo.';
+    err.classList.add('show');
+  } finally { setLoading('btn-2', false, 'Enviar código →'); }
+}
+
+// ── Paso 3: Verificar código ──────────────────────────────────────────────────
+async function paso3() {
+  const inputs = document.querySelectorAll('#otp-inputs input');
+  const code = [...inputs].map(i => i.value).join('').trim();
+  const err = document.getElementById('err-3');
+  const ok  = document.getElementById('ok-3');
+  err.classList.remove('show'); ok.classList.remove('show');
+
+  if (code.length < 6) { err.textContent = 'Ingresa los 6 dígitos del código.'; err.classList.add('show'); return; }
+
+  setLoading('btn-3', true, 'Verificando...');
+  try {
+    const res = await fetch('/api/auth/verify-code', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ documento: estado.doc, codigo: code })
+    });
+    const data = await res.json();
+    if (!data.success) { err.textContent = data.message; err.classList.add('show'); return; }
+
+    clearInterval(timerInterval);
+    ok.textContent = '✅ ¡Verificado! Ingresando...';
+    ok.classList.add('show');
+    setTimeout(() => {
+      window.location.href = '/?cedula=' + encodeURIComponent(estado.doc) + '&nombre=' + encodeURIComponent(data.user?.nombre || estado.nombre || '');
+    }, 800);
+  } catch(e) {
+    err.textContent = 'Error de conexión. Intenta de nuevo.';
+    err.classList.add('show');
+  } finally { setLoading('btn-3', false, 'Verificar →'); }
+}
+
+// ── Reenviar código ───────────────────────────────────────────────────────────
+async function reenviarCodigo() {
+  document.getElementById('btn-reenviar').style.display = 'none';
+  document.getElementById('err-3').classList.remove('show');
+  document.getElementById('ok-3').classList.remove('show');
+
+  const emailDestino = estado.email === '___wip___'
+    ? document.getElementById('email-masked').textContent
+    : estado.email;
+
+  try {
+    const res = await fetch('/api/auth/send-code', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ documento: estado.doc, email: emailDestino })
+    });
+    const data = await res.json();
+    const ok = document.getElementById('ok-3');
+    ok.textContent = data.success ? '📧 Código reenviado a tu correo.' : data.message;
+    ok.classList.add('show');
+    if (data.success) {
+      iniciarTimer(300);
+      document.querySelectorAll('#otp-inputs input').forEach(i => { i.value = ''; i.classList.remove('filled'); });
+      setTimeout(() => document.querySelector('#otp-inputs input').focus(), 100);
+    }
+  } catch(e) {
+    const err = document.getElementById('err-3');
+    err.textContent = 'Error al reenviar. Intenta de nuevo.';
+    err.classList.add('show');
   }
-});
+}
 
-app.get('/api/bus', async (req, res) => {
-  try {
-    const r = await wipFetch('/business/api/v1/BusinessUnit/company/' + PROD.COMPANY_ID + '/business-units/services');
-    const bus = (r.data.businessUnits || []).map(b => ({ id: b.id, name: b.name, tipos: (b.serviceTypes||[]).map(s=>s.name) }));
-    res.json(bus);
-  } catch(e) { res.status(500).json({ error: e.message }); }
-});
+// ── Navegación ────────────────────────────────────────────────────────────────
+function irPaso(n) {
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.getElementById('panel-' + n).classList.add('active');
 
-app.get('/api/health', function(req, res) {
-  res.json({ status: 'ok', uptime: process.uptime(), env: ENV, prod_base: PROD.BASE, qa_base: QA.BASE });
-});
+  for (let i = 1; i <= 3; i++) {
+    const s = document.getElementById('s' + i);
+    s.className = i < n ? 'done' : (i === n ? 'active' : '');
+    if (i < 3) {
+      const l = document.getElementById('l' + i);
+      l.className = 'line' + (i < n ? ' done' : '');
+    }
+  }
+}
+function volverPaso1() { irPaso(1); }
+function volverPaso2() {
+  clearInterval(timerInterval);
+  irPaso(2);
+  document.querySelectorAll('#otp-inputs input').forEach(i => { i.value = ''; i.classList.remove('filled'); });
+}
 
-app.get('/api/diag/supabase', async (req, res) => {
-  const url = SUPABASE_URL, key = SUPABASE_ANON_KEY;
-  if (!url || !key) return res.json({ ok: false, error: 'Variables no configuradas', url, keyPresente: !!key });
-  try {
-    const nodeFetch = (await import('node-fetch')).default;
-    const r = await nodeFetch(url + '/auth/v1/settings', { headers: { 'apikey': key } });
-    const data = await r.json();
-    res.json({ ok: r.ok, status: r.status, url, data });
-  } catch(e) { res.json({ ok: false, error: e.message, url }); }
-});
+// ── OTP inputs ────────────────────────────────────────────────────────────────
+function otpKeyUp(input, idx) {
+  const inputs = document.querySelectorAll('#otp-inputs input');
+  input.classList.toggle('filled', input.value !== '');
+  if (input.value && idx < 5) inputs[idx + 1].focus();
+  if (event.key === 'Backspace' && !input.value && idx > 0) inputs[idx - 1].focus();
+  if ([...inputs].every(i => i.value)) paso3();
+}
+function otpPaste(e) {
+  e.preventDefault();
+  const text = (e.clipboardData || window.clipboardData).getData('text').replace(/\D/g,'').slice(0,6);
+  const inputs = document.querySelectorAll('#otp-inputs input');
+  text.split('').forEach((ch, i) => { if (inputs[i]) { inputs[i].value = ch; inputs[i].classList.add('filled'); } });
+  if (text.length === 6) paso3();
+  else if (inputs[text.length]) inputs[text.length].focus();
+}
 
-// ── Diagnóstico: ver suscripciones de un documento en TODAS las BUs ──────────
-app.get('/api/diag/customer/:doc', async (req, res) => {
-  try {
-    const doc = req.params.doc;
-    const buRes = await wipFetch('/business/api/v1/BusinessUnit/company/' + PROD.COMPANY_ID + '/business-units/services', 'GET', null, 'prod');
-    const bus = buRes.data.businessUnits || [];
-    const nodeFetch = (await import('node-fetch')).default;
-    const resultados = await Promise.all(bus.map(bu =>
-      nodeFetch(PROD.BASE + '/Customer/api/v1/Customer/Subscription?companyId=' + PROD.COMPANY_ID + '&businessUnitId=' + bu.id + '&searchTerm=' + encodeURIComponent(doc), {
-        headers: { 'Authorization': PROD.KEY, 'Content-Type': 'application/json' }
-      }).then(r => r.json()).then(data => ({
-        buId: bu.id, buName: bu.name,
-        resultado: Array.isArray(data) ? data : (data && data.id ? [data] : []),
-        raw: data
-      })).catch(e => ({ buId: bu.id, buName: bu.name, error: e.message }))
-    ));
-    res.json({ documento: doc, total_bus: bus.length, resultados });
-  } catch(e) { res.status(500).json({ error: e.message }); }
-});
+// ── Timer ─────────────────────────────────────────────────────────────────────
+function iniciarTimer(segundos) {
+  clearInterval(timerInterval);
+  document.getElementById('timer-wrap').style.display = 'block';
+  document.getElementById('btn-reenviar').style.display = 'none';
+  let remaining = segundos;
+  timerInterval = setInterval(() => {
+    remaining--;
+    const m = Math.floor(remaining / 60), s = remaining % 60;
+    document.getElementById('timer-count').textContent = m + ':' + String(s).padStart(2,'0');
+    if (remaining <= 0) {
+      clearInterval(timerInterval);
+      document.getElementById('timer-wrap').style.display = 'none';
+      document.getElementById('btn-reenviar').style.display = 'flex';
+    }
+  }, 1000);
+}
 
-app.listen(PORT, '0.0.0.0', function() {
-  console.log('✅ CLTIENE WIP Dashboard en http://localhost:' + PORT);
-  console.log('   Entorno activo: ' + ENV.toUpperCase());
-  console.log('   PROD: ' + PROD.BASE + ' | QA: ' + QA.BASE);
-});
+// ── Helpers ───────────────────────────────────────────────────────────────────
+function setLoading(id, loading, text) {
+  const btn = document.getElementById(id);
+  if (loading) {
+    btn.innerHTML = '<span class="loader"></span> ' + text;
+    btn.disabled = true;
+  } else {
+    btn.innerHTML = text;
+    btn.disabled = false;
+  }
+}
 
-module.exports = app;
+// ── Modo claro/oscuro ─────────────────────────────────────────────────────────
+const LOGO_OSCURO = 'https://cltiene.com/wp-content/uploads/2026/01/e0280ba2b169453b2ae09ecf07c2b8d01673e12b.png';
+const LOGO_CLARO  = 'https://cltiene.com/wp-content/uploads/2025/10/logo-CL.png';
+
+function toggleModo() {
+  const isLight = document.body.classList.toggle('light-mode');
+  document.getElementById('btn-modo').textContent = isLight ? '🌙 Oscuro' : '☀️ Claro';
+  localStorage.setItem('modo', isLight ? 'light' : 'dark');
+  const img = document.getElementById('auth-logo');
+  if (img) img.src = isLight ? LOGO_CLARO : LOGO_OSCURO;
+}
+(function() {
+  if (localStorage.getItem('modo') === 'light') {
+    document.body.classList.add('light-mode');
+    document.addEventListener('DOMContentLoaded', () => {
+      document.getElementById('btn-modo').textContent = '🌙 Oscuro';
+      const img = document.getElementById('auth-logo');
+      if (img) img.src = LOGO_CLARO;
+    });
+  }
+})();
+</script>
+</body>
+</html>
