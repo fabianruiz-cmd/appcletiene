@@ -153,7 +153,7 @@
   </div>
 
   <!-- Indicador de pasos -->
-  <div class="step-indicator" id="steps" style="display:none">
+  <div class="step-indicator" id="steps">
     <span id="s1" class="active">1</span>
     <div class="line" id="l1"></div>
     <span id="s2">2</span>
@@ -164,7 +164,7 @@
   <!-- PASO 1: Ingresar cédula -->
   <div class="panel active" id="panel-1">
     <h1>Bienvenido</h1>
-    <p class="subtitle">Ingresa tu número de cédula para consultar tus servicios.</p>
+    <p class="subtitle">Ingresa tu número de cédula para continuar.</p>
     <div class="card">
       <p class="card-title">Número de documento</p>
       <p class="card-sub">Te enviaremos un código de verificación a tu correo registrado.</p>
@@ -256,8 +256,27 @@ async function paso1() {
     const data = await res.json();
     if (!data.success) { err.textContent = data.message; err.classList.add('show'); return; }
 
-    // Acceso directo sin OTP
-    window.location.href = '/?cedula=' + encodeURIComponent(doc) + '&nombre=' + encodeURIComponent(data.user?.nombre || '');
+    estado.doc = doc;
+    estado.nombre = data.user?.nombre || '';
+    estado.emailWIP = data.user?.emailMasked || '';
+
+    if (data.user?.tieneEmail) {
+      document.getElementById('title-2').textContent = 'Confirmación de correo';
+      document.getElementById('desc-2').textContent = 'Enviaremos el código a tu correo registrado en el sistema.';
+      document.getElementById('sub-2').textContent = 'Hola ' + (estado.nombre || doc) + ', confirma tu correo.';
+      document.getElementById('email-masked').textContent = data.user.emailMasked;
+      document.getElementById('email-confirm-box').style.display = 'flex';
+      document.getElementById('email-input-field').style.display = 'none';
+      estado.email = '___wip___';
+    } else {
+      document.getElementById('title-2').textContent = 'Ingresa tu correo';
+      document.getElementById('desc-2').textContent = 'No tenemos correo registrado. Ingresa uno para recibir el código.';
+      document.getElementById('sub-2').textContent = 'Hola ' + (estado.nombre || doc) + ', necesitamos tu correo.';
+      document.getElementById('email-confirm-box').style.display = 'none';
+      document.getElementById('email-input-field').style.display = 'block';
+      estado.email = '';
+    }
+    irPaso(2);
   } catch(e) {
     err.textContent = 'Error de conexión. Intenta de nuevo.';
     err.classList.add('show');
