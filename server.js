@@ -30,30 +30,35 @@ const QA = {
 const WA_URL   = process.env.WHAPI_URL   || 'https://gate.whapi.cloud';
 const WA_TOKEN = process.env.WHAPI_TOKEN || 'WwW3UAz2x6iJ0nasEd7ar5WFoVsxnGpc';
 
-// ── SMTP nodemailer (Hostinger) ───────────────────────────────────────────────
-const nodemailer = require('nodemailer');
-const SMTP_HOST = process.env.SMTP_HOST || 'smtp.hostinger.com';
-const SMTP_PORT = parseInt(process.env.SMTP_PORT || '465');
-const SMTP_USER = process.env.SMTP_USER || '';
-const SMTP_PASS = process.env.SMTP_PASS || '';
-const SMTP_FROM = process.env.SMTP_FROM || SMTP_USER;
+// ── Mailtrap API REST (sin SMTP, sin bloqueos de puerto) ─────────────────────
+const MAILTRAP_TOKEN = process.env.MAILTRAP_TOKEN || '';
+const MAILTRAP_FROM  = process.env.MAILTRAP_FROM  || 'notificacion@chanitoo.com';
+const MAILTRAP_FROM_NAME = process.env.MAILTRAP_FROM_NAME || 'CL TIENE';
 
 async function sendEmail(to, subject, html) {
-  if (!SMTP_USER || !SMTP_PASS) return { ok: false, err: 'SMTP no configurado: SMTP_USER=' + SMTP_USER + ' SMTP_PASS=' + (SMTP_PASS ? 'OK' : 'VACIO') };
+  if (!MAILTRAP_TOKEN) return { ok: false, err: 'MAILTRAP_TOKEN no configurado' };
   try {
-    console.log('[SMTP] Enviando a', to, 'via', SMTP_HOST + ':' + SMTP_PORT, 'user:', SMTP_USER);
-    const transporter = nodemailer.createTransport({
-      host: SMTP_HOST, port: SMTP_PORT, secure: SMTP_PORT === 465,
-      auth: { user: SMTP_USER, pass: SMTP_PASS },
-      connectionTimeout: 10000,
-      greetingTimeout: 10000,
-      socketTimeout: 15000
+    console.log('[Mailtrap API] Enviando a', to);
+    const nodeFetch = (await import('node-fetch')).default;
+    const res = await nodeFetch('https://send.api.mailtrap.io/api/send', {
+      method: 'POST',
+      headers: {
+        'Authorization': 'Bearer ' + MAILTRAP_TOKEN,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        from: { email: MAILTRAP_FROM, name: MAILTRAP_FROM_NAME },
+        to: [{ email: to }],
+        subject,
+        html
+      })
     });
-    await transporter.sendMail({ from: '"CL TIENE" <' + SMTP_FROM + '>', to, subject, html });
-    console.log('[SMTP] Enviado OK a', to);
+    const data = await res.json();
+    console.log('[Mailtrap API] Respuesta:', res.status, JSON.stringify(data));
+    if (!res.ok) return { ok: false, err: data.errors ? data.errors.join(', ') : JSON.stringify(data) };
     return { ok: true };
   } catch(e) {
-    console.error('[SMTP] Error:', e.message);
+    console.error('[Mailtrap API] Error:', e.message);
     return { ok: false, err: e.message };
   }
 }
@@ -202,7 +207,7 @@ app.post('/api/auth/send-code', async (req, res) => {
 
   const existing = otpStore.get(doc);
   if (existing && Date.now() < existing.expires - 180000)
-    return res.status(429).json({ success: false, message: 'Espera un momento antes de solicitar otro código.' });
+    return res.status(429).json({ success: false, message: '⚠️ Por seguridad, solo puedes solicitar un código cada 3 minutos. Esto protege tu cuenta de intentos no autorizados.' });
 
   try {
     const clientes = await buscarClienteWIP(doc, env);
