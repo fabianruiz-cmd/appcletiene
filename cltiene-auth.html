@@ -289,16 +289,42 @@ async function paso2() {
   const err = document.getElementById('err-2');
   err.classList.remove('show');
 
-  // Si ingresó número manualmente, guardarlo en estado para que send-code lo use
-  if (telefonoNuevo !== null) {
-    estado.telefonoManual = telefonoNuevo;
+  // Verificar si el campo de teléfono está visible (cliente sin número registrado)
+  const campoTelVisible = document.getElementById('email-input-field').style.display !== 'none';
+  const telefonoIngresado = campoTelVisible ? document.getElementById('inp-email').value.trim() : null;
+
+  if (campoTelVisible) {
+    if (!telefonoIngresado || telefonoIngresado.length < 7) {
+      err.textContent = 'Ingresa un número de WhatsApp válido.';
+      err.classList.add('show');
+      return;
+    }
+    // Paso 1: Guardar el teléfono en WIP
+    setLoading('btn-2', true, 'Guardando número...');
+    try {
+      const saveRes = await fetch('/api/auth/update-phone', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ documento: estado.doc, telefono: telefonoIngresado })
+      });
+      const saveData = await saveRes.json();
+      console.log('[update-phone respuesta]', saveData);
+      // Continuamos aunque falle el guardado — el teléfono manual se usa igual
+    } catch(e) {
+      console.warn('[update-phone error]', e.message);
+    } finally {
+      setLoading('btn-2', false, 'Verificar y enviar código →');
+    }
   }
 
-  setLoading('btn-2', true, 'Enviando...');
+  // Paso 2: Enviar OTP
+  setLoading('btn-2', true, 'Enviando código...');
   try {
     const res = await fetch('/api/auth/send-code', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ documento: estado.doc, telefonoManual: estado.telefonoManual || null })
+      body: JSON.stringify({ 
+        documento: estado.doc, 
+        telefonoManual: telefonoIngresado || null 
+      })
     });
     const data = await res.json();
     if (!data.success) { err.textContent = data.message; err.classList.add('show'); return; }
@@ -310,7 +336,7 @@ async function paso2() {
   } catch(e) {
     err.textContent = 'Error de conexión. Intenta de nuevo.';
     err.classList.add('show');
-  } finally { setLoading('btn-2', false, 'Enviar código →'); }
+  } finally { setLoading('btn-2', false, 'Verificar y enviar código →'); }
 }
 
 // ── Paso 3: Verificar código ──────────────────────────────────────────────────
