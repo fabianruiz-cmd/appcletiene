@@ -487,5 +487,123 @@ function toggleModo() {
   }
 })();
 </script>
+<!-- ── Slider de Planes ──────────────────────────────────────────────────── -->
+<div id="planes-slider-wrap" style="position:fixed;bottom:0;left:0;right:0;padding:12px 0 16px;background:linear-gradient(to top, #07090f 60%, transparent);z-index:10;pointer-events:none">
+  <p style="text-align:center;font-size:10px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:#3a4560;margin-bottom:10px">Nuestros Planes</p>
+  <div id="planes-track-outer" style="overflow:hidden;pointer-events:all">
+    <div id="planes-track" style="display:flex;gap:12px;transition:transform .5s cubic-bezier(.4,0,.2,1);will-change:transform;padding:0 16px">
+      <!-- Cards generadas por JS -->
+    </div>
+  </div>
+  <!-- Dots -->
+  <div id="planes-dots" style="display:flex;justify-content:center;gap:6px;margin-top:10px"></div>
+</div>
+
+<style>
+  /* Espacio para el slider */
+  .container { padding-bottom: 130px !important; }
+
+  .plan-card {
+    flex: 0 0 140px;
+    background: #111318;
+    border: 1px solid #1e2535;
+    border-radius: 14px;
+    overflow: hidden;
+    cursor: pointer;
+    transition: transform .2s, border-color .2s;
+    text-decoration: none;
+    display: block;
+  }
+  .plan-card:hover { transform: translateY(-3px); border-color: #0d7a5f50; }
+  .plan-card img { width: 100%; height: 80px; object-fit: cover; display: block; }
+  .plan-card-label {
+    font-size: 11px; font-weight: 700; color: #e8eaf2;
+    padding: 8px 10px 10px; text-align: center; line-height: 1.3;
+  }
+  .plan-dot {
+    width: 6px; height: 6px; border-radius: 50%;
+    background: #1e2535; transition: background .3s, transform .3s;
+    cursor: pointer;
+  }
+  .plan-dot.active { background: #0d7a5f; transform: scale(1.3); }
+
+  body.light-mode #planes-slider-wrap {
+    background: linear-gradient(to top, #f0f2f5 60%, transparent);
+  }
+  body.light-mode .plan-card {
+    background: #fff; border-color: #dde1ea;
+  }
+  body.light-mode .plan-card-label { color: #1a202c; }
+  body.light-mode .plan-dot { background: #dde1ea; }
+  body.light-mode .plan-dot.active { background: #0d7a5f; }
+</style>
+
+<script>
+const PLANES = [
+  { nombre: 'Plan Salud',     img: 'https://cltiene.com/wp-content/uploads/2025/05/plan-salud.webp',     url: 'https://cltiene.com/product/plan-salud-estandar/' },
+  { nombre: 'Plan Movilidad', img: 'https://cltiene.com/wp-content/uploads/2025/05/plan-movilidad.webp', url: 'https://cltiene.com/product/plan-movilidad-estandar/' },
+  { nombre: 'Plan Manada',    img: 'https://cltiene.com/wp-content/uploads/2025/05/plan-manada.webp',    url: 'https://cltiene.com/product/plan-manada-estandar/' },
+  { nombre: 'Plan Mascotas',  img: 'https://cltiene.com/wp-content/uploads/2025/05/plan-mascotas.webp',  url: 'https://cltiene.com/product/plan-mascotas-estandar/' },
+  { nombre: 'Plan Premium',   img: 'https://cltiene.com/wp-content/uploads/2025/05/plan-premium.webp',   url: 'https://cltiene.com/product/plan-estandar-premium/' },
+];
+
+(function initSlider() {
+  const track = document.getElementById('planes-track');
+  const dotsEl = document.getElementById('planes-dots');
+  const outer = document.getElementById('planes-track-outer');
+
+  // Renderizar cards
+  PLANES.forEach(function(p, i) {
+    const a = document.createElement('a');
+    a.className = 'plan-card';
+    a.href = p.url;
+    a.target = '_blank';
+    a.rel = 'noopener';
+    a.innerHTML = '<img src="' + p.img + '" alt="' + p.nombre + '" onerror="this.style.background=\'#1e2535\';this.style.height=\'80px\'"/><div class="plan-card-label">' + p.nombre + '</div>';
+    track.appendChild(a);
+
+    const dot = document.createElement('div');
+    dot.className = 'plan-dot' + (i === 0 ? ' active' : '');
+    dot.onclick = function() { goTo(i); };
+    dotsEl.appendChild(dot);
+  });
+
+  let current = 0;
+  let autoplay;
+  const cardW = 140 + 12; // card + gap
+
+  function goTo(idx) {
+    current = idx;
+    const maxOffset = Math.max(0, PLANES.length * cardW - outer.offsetWidth + 32);
+    const offset = Math.min(current * cardW, maxOffset);
+    track.style.transform = 'translateX(-' + offset + 'px)';
+    dotsEl.querySelectorAll('.plan-dot').forEach(function(d, i) {
+      d.classList.toggle('active', i === current);
+    });
+  }
+
+  function next() {
+    goTo((current + 1) % PLANES.length);
+  }
+
+  function startAuto() { autoplay = setInterval(next, 3000); }
+  function stopAuto()  { clearInterval(autoplay); }
+
+  startAuto();
+  outer.addEventListener('touchstart', stopAuto, { passive: true });
+  outer.addEventListener('touchend',   function() { setTimeout(startAuto, 4000); }, { passive: true });
+  outer.addEventListener('mouseenter', stopAuto);
+  outer.addEventListener('mouseleave', startAuto);
+
+  // Touch swipe
+  let startX = 0;
+  outer.addEventListener('touchstart', function(e) { startX = e.touches[0].clientX; }, { passive: true });
+  outer.addEventListener('touchend', function(e) {
+    const diff = startX - e.changedTouches[0].clientX;
+    if (Math.abs(diff) > 40) diff > 0 ? next() : goTo((current - 1 + PLANES.length) % PLANES.length);
+  }, { passive: true });
+})();
+</script>
+
 </body>
 </html>
