@@ -208,6 +208,7 @@ app.post('/api/auth/update-phone', async (req, res) => {
 
 app.post('/api/auth/send-code', async (req, res) => {
   const doc = req.body.documento, env = req.body.env || 'prod';
+  const telefonoManual = req.body.telefonoManual || null;
   if (!doc) return res.status(400).json({ success: false, message: 'Documento requerido' });
 
   const existing = otpStore.get(doc);
@@ -222,6 +223,8 @@ app.post('/api/auth/send-code', async (req, res) => {
       if (!nombre && c.name) nombre = c.name;
       if (!telefono && c.phone) telefono = c.phone;
     });
+    // Si el cliente ingresó su número manualmente, usarlo directamente
+    if (!telefono && telefonoManual) telefono = telefonoManual;
     if (!telefono) return res.status(404).json({ success: false, message: 'No hay número de WhatsApp registrado para este documento.' });
 
     const code = Math.floor(100000 + Math.random() * 900000).toString();
