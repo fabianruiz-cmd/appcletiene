@@ -190,7 +190,7 @@
       <div class="alert alert-err" id="err-2"></div>
       <div class="info-box" id="email-confirm-box" style="display:none">
         <span>📧</span>
-        <span>Enviaremos el código a <strong id="email-masked"></strong></span>
+        <span>Enviaremos el código por WhatsApp a <strong id="email-masked"></strong></span>
       </div>
       <div class="field" id="email-input-field" style="display:none">
         <label>Tu correo electrónico</label>
@@ -198,7 +198,7 @@
                onkeydown="if(event.key==='Enter') paso2()"/>
       </div>
       <button class="btn" id="btn-2" onclick="paso2()">
-        Enviar código →
+        Enviar por WhatsApp →
       </button>
       <button class="btn btn-ghost" onclick="volverPaso1()">← Cambiar cédula</button>
     </div>
@@ -230,7 +230,7 @@
       <button class="btn btn-ghost" id="btn-reenviar" onclick="reenviarCodigo()" style="display:none">
         Reenviar código
       </button>
-      <button class="btn btn-ghost" onclick="volverPaso2()" style="margin-top:0">← Cambiar correo</button>
+      <button class="btn btn-ghost" onclick="volverPaso2()" style="margin-top:0">← Cambiar número</button>
     </div>
   </div>
 </div>
@@ -258,23 +258,21 @@ async function paso1() {
 
     estado.doc = doc;
     estado.nombre = data.user?.nombre || '';
-    estado.emailWIP = data.user?.emailMasked || '';
 
-    if (data.user?.tieneEmail) {
-      document.getElementById('title-2').textContent = 'Confirmación de correo';
-      document.getElementById('desc-2').textContent = 'Enviaremos el código a tu correo registrado en el sistema.';
-      document.getElementById('sub-2').textContent = 'Hola ' + (estado.nombre || doc) + ', confirma tu correo.';
-      document.getElementById('email-masked').textContent = data.user.emailMasked;
+    if (data.user?.tieneTelefono) {
+      document.getElementById('title-2').textContent = 'Verificación por WhatsApp';
+      document.getElementById('desc-2').textContent = 'Enviaremos un código de 6 dígitos a tu WhatsApp registrado.';
+      document.getElementById('sub-2').textContent = 'Hola ' + (estado.nombre || doc) + ', confirma tu número.';
+      document.getElementById('email-masked').textContent = data.user.telefonoMasked;
       document.getElementById('email-confirm-box').style.display = 'flex';
       document.getElementById('email-input-field').style.display = 'none';
-      estado.email = '___wip___';
     } else {
-      document.getElementById('title-2').textContent = 'Ingresa tu correo';
-      document.getElementById('desc-2').textContent = 'No tenemos correo registrado. Ingresa uno para recibir el código.';
-      document.getElementById('sub-2').textContent = 'Hola ' + (estado.nombre || doc) + ', necesitamos tu correo.';
+      document.getElementById('title-2').textContent = 'Sin WhatsApp registrado';
+      document.getElementById('desc-2').textContent = 'No tenemos número de WhatsApp para tu documento. Contacta a CL TIENE.';
+      document.getElementById('sub-2').textContent = 'Hola ' + (estado.nombre || doc);
       document.getElementById('email-confirm-box').style.display = 'none';
-      document.getElementById('email-input-field').style.display = 'block';
-      estado.email = '';
+      document.getElementById('email-input-field').style.display = 'none';
+      document.getElementById('btn-2').disabled = true;
     }
     irPaso(2);
   } catch(e) {
@@ -288,24 +286,11 @@ async function paso2() {
   const err = document.getElementById('err-2');
   err.classList.remove('show');
 
-  let emailDestino = estado.email;
-  if (emailDestino === '___wip___') {
-    // Usar email de WIP — el servidor ya lo tiene
-    emailDestino = document.getElementById('email-masked').textContent;
-  } else {
-    // Email ingresado por el usuario
-    emailDestino = document.getElementById('inp-email').value.trim();
-    if (!emailDestino || !emailDestino.includes('@')) {
-      err.textContent = 'Ingresa un correo válido.'; err.classList.add('show'); return;
-    }
-    estado.email = emailDestino;
-  }
-
   setLoading('btn-2', true, 'Enviando...');
   try {
     const res = await fetch('/api/auth/send-code', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ documento: estado.doc, email: emailDestino })
+      body: JSON.stringify({ documento: estado.doc })
     });
     const data = await res.json();
     if (!data.success) { err.textContent = data.message; err.classList.add('show'); return; }
@@ -357,14 +342,10 @@ async function reenviarCodigo() {
   document.getElementById('err-3').classList.remove('show');
   document.getElementById('ok-3').classList.remove('show');
 
-  const emailDestino = estado.email === '___wip___'
-    ? document.getElementById('email-masked').textContent
-    : estado.email;
-
   try {
     const res = await fetch('/api/auth/send-code', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ documento: estado.doc, email: emailDestino })
+      body: JSON.stringify({ documento: estado.doc })
     });
     const data = await res.json();
     const ok = document.getElementById('ok-3');
