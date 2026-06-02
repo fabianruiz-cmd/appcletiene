@@ -30,37 +30,12 @@ const QA = {
 const WA_URL   = process.env.WHAPI_URL   || 'https://gate.whapi.cloud';
 const WA_TOKEN = process.env.WHAPI_TOKEN || 'WwW3UAz2x6iJ0nasEd7ar5WFoVsxnGpc';
 
-// ── Mailtrap API REST (sin SMTP, sin bloqueos de puerto) ─────────────────────
-const MAILTRAP_TOKEN = process.env.MAILTRAP_TOKEN || '';
-const MAILTRAP_FROM  = process.env.MAILTRAP_FROM  || 'notificacion@chanitoo.com';
-const MAILTRAP_FROM_NAME = process.env.MAILTRAP_FROM_NAME || 'CL TIENE';
-
-async function sendEmail(to, subject, html) {
-  if (!MAILTRAP_TOKEN) return { ok: false, err: 'MAILTRAP_TOKEN no configurado' };
-  try {
-    console.log('[Mailtrap API] Enviando a', to);
-    const nodeFetch = (await import('node-fetch')).default;
-    const res = await nodeFetch('https://send.api.mailtrap.io/api/send', {
-      method: 'POST',
-      headers: {
-        'Authorization': 'Bearer ' + MAILTRAP_TOKEN,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        from: { email: MAILTRAP_FROM, name: MAILTRAP_FROM_NAME },
-        to: [{ email: to }],
-        subject,
-        html
-      })
-    });
-    const data = await res.json();
-    console.log('[Mailtrap API] Respuesta:', res.status, JSON.stringify(data));
-    if (!res.ok) return { ok: false, err: data.errors ? data.errors.join(', ') : JSON.stringify(data) };
-    return { ok: true };
-  } catch(e) {
-    console.error('[Mailtrap API] Error:', e.message);
-    return { ok: false, err: e.message };
-  }
+// ── WhatsApp OTP via whapi.cloud ─────────────────────────────────────────────
+async function sendOTPWhatsApp(telefono, nombre, code) {
+  const msg = '🔐 *CL TIENE — Código de Verificación*\n\nHola ' + nombre + ', tu código de acceso es:\n\n*' + code + '*\n\nVálido por 5 minutos. No lo compartas con nadie.\n\n_MULTISERVICIOS CL TIENE_';
+  const wa = await sendWA(telefono, msg);
+  console.log('[OTP WA] Enviado a', telefono, '| ok:', wa.ok);
+  return wa;
 }
 
 function getCfg(env) { return env === 'qa' ? QA : PROD; }
@@ -191,19 +166,19 @@ app.post('/api/auth/validate-document', async (req, res) => {
   try {
     const clientes = await buscarClienteWIP(doc, env);
     if (!clientes.length) return res.status(404).json({ success: false, message: 'Documento no encontrado en el sistema.' });
-    let email = '', nombre = '';
+    let telefono = '', nombre = '';
     clientes.forEach(function(c) {
-      if (!email && c.email) email = c.email;
+      if (!telefono && c.phone) telefono = c.phone;
       if (!nombre && c.name) nombre = c.name;
     });
-    res.json({ success: true, user: { nombre, tieneEmail: !!email, emailMasked: email ? maskEmail(email) : null } });
+    const telMasked = telefono ? telefono.replace(/\d(?=\d{4})/g, '*') : null;
+    res.json({ success: true, user: { nombre, tieneTelefono: !!telefono, telefonoMasked: telMasked } });
   } catch(e) { res.status(500).json({ success: false, message: e.message }); }
 });
 
 app.post('/api/auth/send-code', async (req, res) => {
-  const doc = req.body.documento, email = req.body.email, env = req.body.env || 'prod';
-  if (!doc)   return res.status(400).json({ success: false, message: 'Documento requerido' });
-  if (!email) return res.status(400).json({ success: false, message: 'Correo electrónico requerido' });
+  const doc = req.body.documento, env = req.body.env || 'prod';
+  if (!doc) return res.status(400).json({ success: false, message: 'Documento requerido' });
 
   const existing = otpStore.get(doc);
   if (existing && Date.now() < existing.expires - 180000)
@@ -212,31 +187,19 @@ app.post('/api/auth/send-code', async (req, res) => {
   try {
     const clientes = await buscarClienteWIP(doc, env);
     if (!clientes.length) return res.status(404).json({ success: false, message: 'Documento no encontrado.' });
-    let nombre = '';
-    clientes.forEach(function(c) { if (!nombre && c.name) nombre = c.name; });
+    let nombre = '', telefono = '';
+    clientes.forEach(function(c) {
+      if (!nombre && c.name) nombre = c.name;
+      if (!telefono && c.phone) telefono = c.phone;
+    });
+    if (!telefono) return res.status(404).json({ success: false, message: 'No hay número de WhatsApp registrado para este documento.' });
 
     const code = Math.floor(100000 + Math.random() * 900000).toString();
-    otpStore.set(doc, { code, expires: Date.now() + 300000, attempts: 0, email, nombre });
+    otpStore.set(doc, { code, expires: Date.now() + 300000, attempts: 0, telefono, nombre });
 
-    const html = `
-    <div style="font-family:Arial,sans-serif;max-width:480px;margin:0 auto;padding:32px;background:#f8fafc;border-radius:12px">
-      <div style="text-align:center;margin-bottom:24px">
-        <img src="https://cltiene.com/wp-content/uploads/2025/10/logo-CL.png" height="48" alt="CL TIENE" style="max-height:48px"/>
-      </div>
-      <h2 style="color:#0d7a5f;text-align:center;margin-bottom:8px">Código de Verificación</h2>
-      <p style="color:#475569;text-align:center;margin-bottom:28px">Hola <strong>${nombre}</strong>, usa este código para acceder a tu panel:</p>
-      <div style="background:#fff;border:2px solid #0d7a5f;border-radius:12px;padding:24px;text-align:center;margin-bottom:24px">
-        <span style="font-size:38px;font-weight:800;letter-spacing:10px;color:#0d7a5f">${code}</span>
-      </div>
-      <p style="color:#94a3b8;font-size:12px;text-align:center">Válido por <strong>5 minutos</strong>. No lo compartas con nadie.</p>
-      <hr style="border:none;border-top:1px solid #e2e8f0;margin:24px 0"/>
-      <p style="color:#cbd5e1;font-size:11px;text-align:center">MULTISERVICIOS CL TIENE — Panel de Servicios</p>
-    </div>`;
-
-    const resultado = await sendEmail(email, '🔐 Tu código de acceso — CL TIENE', html);
-    console.log('[OTP SMTP]', email, '| ok:', resultado.ok, resultado.err || '');
-    if (!resultado.ok) return res.status(500).json({ success: false, message: 'Error al enviar correo: ' + (resultado.err || 'intenta de nuevo') });
-    res.json({ success: true, message: 'Código enviado a ' + maskEmail(email) });
+    const resultado = await sendOTPWhatsApp(telefono, nombre, code);
+    if (!resultado.ok) return res.status(500).json({ success: false, message: 'Error al enviar WhatsApp: ' + (resultado.err || 'intenta de nuevo') });
+    res.json({ success: true, message: 'Código enviado por WhatsApp' });
   } catch(e) { res.status(500).json({ success: false, message: e.message }); }
 });
 
