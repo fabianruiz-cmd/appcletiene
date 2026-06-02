@@ -266,13 +266,19 @@ async function paso1() {
       document.getElementById('email-masked').textContent = data.user.telefonoMasked;
       document.getElementById('email-confirm-box').style.display = 'flex';
       document.getElementById('email-input-field').style.display = 'none';
+      document.getElementById('btn-2').disabled = false;
+      document.getElementById('btn-2').textContent = 'Enviar por WhatsApp →';
     } else {
-      document.getElementById('title-2').textContent = 'Sin WhatsApp registrado';
-      document.getElementById('desc-2').textContent = 'No tenemos número de WhatsApp para tu documento. Contacta a CL TIENE.';
-      document.getElementById('sub-2').textContent = 'Hola ' + (estado.nombre || doc);
+      document.getElementById('title-2').textContent = 'Registra tu WhatsApp';
+      document.getElementById('desc-2').textContent = 'No tenemos tu número registrado. Ingrésalo para recibir el código de verificación — quedará guardado para futuras sesiones.';
+      document.getElementById('sub-2').textContent = 'Hola ' + (estado.nombre || doc) + ', necesitamos tu número.';
       document.getElementById('email-confirm-box').style.display = 'none';
-      document.getElementById('email-input-field').style.display = 'none';
-      document.getElementById('btn-2').disabled = true;
+      document.getElementById('email-input-field').style.display = 'block';
+      document.getElementById('inp-email').type = 'tel';
+      document.getElementById('inp-email').placeholder = 'Ej. 3118635287';
+      document.getElementById('inp-email').setAttribute('inputmode', 'numeric');
+      document.getElementById('btn-2').disabled = false;
+      document.getElementById('btn-2').textContent = 'Verificar y enviar código →';
     }
     irPaso(2);
   } catch(e) {
