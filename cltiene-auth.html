@@ -182,8 +182,8 @@
 
   <!-- PASO 2: Confirmar / ingresar correo -->
   <div class="panel" id="panel-2">
-    <h1>Verificar correo</h1>
-    <p class="subtitle" id="sub-2">Confirma tu correo electrónico.</p>
+    <h1>Verificar WhatsApp</h1>
+    <p class="subtitle" id="sub-2">Confirma tu número de WhatsApp.</p>
     <div class="card">
       <p class="card-title" id="title-2">Correo electrónico</p>
       <p class="card-sub" id="desc-2">Te enviaremos un código de 6 dígitos.</p>
@@ -193,8 +193,8 @@
         <span>Enviaremos el código por WhatsApp a <strong id="email-masked"></strong></span>
       </div>
       <div class="field" id="email-input-field" style="display:none">
-        <label>Tu correo electrónico</label>
-        <input type="email" id="inp-email" placeholder="correo@ejemplo.com"
+        <label>Tu número de WhatsApp</label>
+        <input type="tel" id="inp-email" placeholder="Ej. 3118635287" inputmode="numeric"
                onkeydown="if(event.key==='Enter') paso2()"/>
       </div>
       <button class="btn" id="btn-2" onclick="paso2()">
@@ -274,9 +274,6 @@ async function paso1() {
       document.getElementById('sub-2').textContent = 'Hola ' + (estado.nombre || doc) + ', necesitamos tu número.';
       document.getElementById('email-confirm-box').style.display = 'none';
       document.getElementById('email-input-field').style.display = 'block';
-      document.getElementById('inp-email').type = 'tel';
-      document.getElementById('inp-email').placeholder = 'Ej. 3118635287';
-      document.getElementById('inp-email').setAttribute('inputmode', 'numeric');
       document.getElementById('btn-2').disabled = false;
       document.getElementById('btn-2').textContent = 'Verificar y enviar código →';
     }
@@ -292,11 +289,16 @@ async function paso2() {
   const err = document.getElementById('err-2');
   err.classList.remove('show');
 
+  // Si ingresó número manualmente, guardarlo en estado para que send-code lo use
+  if (telefonoNuevo !== null) {
+    estado.telefonoManual = telefonoNuevo;
+  }
+
   setLoading('btn-2', true, 'Enviando...');
   try {
     const res = await fetch('/api/auth/send-code', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ documento: estado.doc })
+      body: JSON.stringify({ documento: estado.doc, telefonoManual: estado.telefonoManual || null })
     });
     const data = await res.json();
     if (!data.success) { err.textContent = data.message; err.classList.add('show'); return; }
