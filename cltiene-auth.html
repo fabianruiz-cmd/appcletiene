@@ -488,23 +488,36 @@ function toggleModo() {
 })();
 </script>
 <!-- ── Slider de Planes ──────────────────────────────────────────────────── -->
-<div id="planes-slider-wrap" style="position:fixed;bottom:0;left:0;right:0;padding:12px 0 16px;background:linear-gradient(to top, #07090f 60%, transparent);z-index:10;pointer-events:none">
-  <p style="text-align:center;font-size:10px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:#3a4560;margin-bottom:10px">Nuestros Planes</p>
-  <div id="planes-track-outer" style="overflow:hidden;pointer-events:all;display:flex;justify-content:center">
-    <div id="planes-track" style="display:flex;gap:12px;will-change:transform;padding:0 16px">
+<div id="planes-slider-wrap" style="width:100%;padding:16px 0 20px;margin-top:auto;pointer-events:none;flex-shrink:0">
+  <p style="text-align:center;font-size:10px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:#3a4560;margin-bottom:8px">Nuestros Planes</p>
+  <div class="marquee-outer" style="overflow:hidden;pointer-events:all;mask-image:linear-gradient(to right,transparent,black 10%,black 90%,transparent);-webkit-mask-image:linear-gradient(to right,transparent,black 10%,black 90%,transparent)">
+    <div class="marquee-track" id="planes-track">
       <!-- Cards generadas por JS -->
     </div>
   </div>
-  <!-- Dots -->
-  <div id="planes-dots" style="display:flex;justify-content:center;gap:6px;margin-top:10px"></div>
 </div>
 
 <style>
-  /* Espacio para el slider */
-  .container { padding-bottom: 130px !important; }
+  /* Espacio para el slider — layout flex vertical */
+  html, body { height: 100%; }
+  body { display: flex; flex-direction: column; justify-content: space-between; }
+  .container { padding-bottom: 24px !important; flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+
+  /* Marquee continuo */
+  .marquee-outer { width: 100%; }
+  .marquee-track {
+    display: flex; gap: 12px;
+    width: max-content;
+    animation: marquee 20s linear infinite;
+  }
+  .marquee-track:hover { animation-play-state: paused; }
+  @keyframes marquee {
+    0%   { transform: translateX(0); }
+    100% { transform: translateX(-50%); }
+  }
 
   .plan-card {
-    flex: 0 0 140px;
+    flex: 0 0 130px;
     background: #111318;
     border: 1px solid #1e2535;
     border-radius: 14px;
@@ -513,29 +526,19 @@ function toggleModo() {
     transition: transform .2s, border-color .2s;
     text-decoration: none;
     display: block;
+    pointer-events: all;
   }
-  .plan-card:hover { transform: translateY(-3px); border-color: #0d7a5f50; }
-  .plan-card img { width: 100%; height: 100px; object-fit: cover; display: block; }
+  .plan-card:hover { transform: translateY(-3px); border-color: #0d7a5f60; }
+  .plan-card img { width: 100%; height: 90px; object-fit: cover; display: block; }
   .plan-card-label {
     font-size: 11px; font-weight: 700; color: #e8eaf2;
-    padding: 8px 10px 10px; text-align: center; line-height: 1.3;
+    padding: 6px 8px 8px; text-align: center; line-height: 1.3;
   }
-  .plan-dot {
-    width: 6px; height: 6px; border-radius: 50%;
-    background: #1e2535; transition: background .3s, transform .3s;
-    cursor: pointer;
-  }
-  .plan-dot.active { background: #0d7a5f; transform: scale(1.3); }
 
-  body.light-mode #planes-slider-wrap {
-    background: linear-gradient(to top, #f0f2f5 60%, transparent);
-  }
-  body.light-mode .plan-card {
-    background: #fff; border-color: #dde1ea;
-  }
+  body.light-mode .plan-card { background: #fff; border-color: #dde1ea; box-shadow: 0 2px 8px rgba(0,0,0,.06); }
   body.light-mode .plan-card-label { color: #1a202c; }
-  body.light-mode .plan-dot { background: #dde1ea; }
-  body.light-mode .plan-dot.active { background: #0d7a5f; }
+  #planes-slider-wrap { background: linear-gradient(to bottom, transparent, #07090f 30%); }
+  body.light-mode #planes-slider-wrap { background: linear-gradient(to bottom, transparent, #f0f2f5 30%); }
 </style>
 
 <script>
