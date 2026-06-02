@@ -504,11 +504,12 @@ function toggleModo() {
   .container { padding-bottom: 24px !important; flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; }
 
   /* Marquee continuo */
-  .marquee-outer { width: 100%; }
+  .marquee-outer { width: 100%; overflow: hidden; }
   .marquee-track {
     display: flex; gap: 12px;
     width: max-content;
-    animation: marquee 20s linear infinite;
+    padding: 4px 0 4px 12px;
+    animation: marquee 22s linear infinite;
   }
   .marquee-track:hover { animation-play-state: paused; }
   @keyframes marquee {
