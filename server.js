@@ -125,10 +125,16 @@ async function buscarClienteWIP(doc, env) {
   const resultados = await Promise.all(promesas);
   const vistos = new Map();
   resultados.forEach(function(r) {
-    const items = Array.isArray(r) ? r : (r && r.id ? [r] : []);
-    items.forEach(function(c) { if (!vistos.has(c.id)) vistos.set(c.id, c); });
+    // La API puede devolver array directo, objeto con .data, o un solo objeto
+    let items = [];
+    if (Array.isArray(r)) items = r;
+    else if (r && Array.isArray(r.data)) items = r.data;
+    else if (r && r.id) items = [r];
+    items.forEach(function(c) { if (c && c.id && !vistos.has(c.id)) vistos.set(c.id, c); });
   });
-  return [...vistos.values()];
+  const resultado = [...vistos.values()];
+  console.log('[buscarClienteWIP] doc:', doc, '| suscripciones:', resultado.length, '| teléfonos:', resultado.filter(c => c.phone).map(c => c.phone));
+  return resultado;
 }
 
 function maskEmail(email) {
