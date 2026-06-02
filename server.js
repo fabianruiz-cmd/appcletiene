@@ -111,6 +111,41 @@ async function sendWA(tel, msg) {
 // ── OTP Store ─────────────────────────────────────────────────────────────────
 const otpStore = new Map();
 
+// ── Supabase — guardar/leer teléfonos de clientes ────────────────────────────
+const SUPABASE_URL      = process.env.SUPABASE_URL      || '';
+const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY || '';
+
+async function sbGetPhone(documentId) {
+  if (!SUPABASE_URL || !SUPABASE_ANON_KEY) return null;
+  try {
+    const nodeFetch = (await import('node-fetch')).default;
+    const res = await nodeFetch(SUPABASE_URL + '/rest/v1/customer_phones?document_id=eq.' + encodeURIComponent(documentId) + '&select=phone', {
+      headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': 'Bearer ' + SUPABASE_ANON_KEY }
+    });
+    const data = await res.json();
+    return (Array.isArray(data) && data.length > 0) ? data[0].phone : null;
+  } catch(e) { console.error('[Supabase] sbGetPhone error:', e.message); return null; }
+}
+
+async function sbSavePhone(documentId, phone) {
+  if (!SUPABASE_URL || !SUPABASE_ANON_KEY) return false;
+  try {
+    const nodeFetch = (await import('node-fetch')).default;
+    const res = await nodeFetch(SUPABASE_URL + '/rest/v1/customer_phones', {
+      method: 'POST',
+      headers: {
+        'apikey': SUPABASE_ANON_KEY,
+        'Authorization': 'Bearer ' + SUPABASE_ANON_KEY,
+        'Content-Type': 'application/json',
+        'Prefer': 'resolution=merge-duplicates'
+      },
+      body: JSON.stringify({ document_id: documentId, phone, updated_at: new Date().toISOString() })
+    });
+    console.log('[Supabase] sbSavePhone', documentId, phone, '→ status:', res.status);
+    return res.ok;
+  } catch(e) { console.error('[Supabase] sbSavePhone error:', e.message); return false; }
+}
+
 // ── Buscar cliente en todas las BUs ───────────────────────────────────────────
 async function buscarClienteWIP(doc, env) {
   const cfg = getCfg(env);
@@ -177,6 +212,8 @@ app.post('/api/auth/validate-document', async (req, res) => {
       if (!telefono && c.phone) telefono = c.phone;
       if (!nombre && c.name) nombre = c.name;
     });
+    // Si no tiene teléfono en WIP, buscar en Supabase
+    if (!telefono) telefono = await sbGetPhone(doc) || '';
     const telMasked = telefono ? telefono.replace(/\d(?=\d{4})/g, '*') : null;
     res.json({ success: true, user: { nombre, tieneTelefono: !!telefono, telefonoMasked: telMasked } });
   } catch(e) { res.status(500).json({ success: false, message: e.message }); }
@@ -220,8 +257,11 @@ app.post('/api/auth/update-phone', async (req, res) => {
     }));
 
     const exitosos = actualizaciones.filter(a => a.status >= 200 && a.status < 300).length;
-    console.log('[update-phone] Actualizados:', exitosos + '/' + actualizaciones.length);
-    res.json({ success: true, message: 'Teléfono actualizado en ' + exitosos + ' registros.' });
+    console.log('[update-phone] WIP Actualizados:', exitosos + '/' + actualizaciones.length);
+    // Guardar siempre en Supabase como respaldo
+    const sbOk = await sbSavePhone(documento, telefono);
+    console.log('[update-phone] Supabase guardado:', sbOk);
+    res.json({ success: true, message: 'Teléfono registrado correctamente.' });
   } catch(e) { res.status(500).json({ success: false, message: e.message }); }
 });
 
@@ -242,6 +282,8 @@ app.post('/api/auth/send-code', async (req, res) => {
       if (!nombre && c.name) nombre = c.name;
       if (!telefono && c.phone) telefono = c.phone;
     });
+    // Si no tiene en WIP, buscar en Supabase
+    if (!telefono) telefono = await sbGetPhone(doc) || '';
     // Si el cliente ingresó su número manualmente, usarlo directamente
     if (!telefono && telefonoManual) telefono = telefonoManual;
     if (!telefono) return res.status(404).json({ success: false, message: 'No hay número de WhatsApp registrado para este documento.' });
