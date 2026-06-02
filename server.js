@@ -182,6 +182,30 @@ app.post('/api/auth/validate-document', async (req, res) => {
   } catch(e) { res.status(500).json({ success: false, message: e.message }); }
 });
 
+// ── Actualizar teléfono del cliente en WIP ───────────────────────────────────
+app.post('/api/auth/update-phone', async (req, res) => {
+  const { documento, telefono, env } = req.body;
+  if (!documento || !telefono) return res.status(400).json({ success: false, message: 'Documento y teléfono requeridos' });
+  try {
+    const clientes = await buscarClienteWIP(documento, env || 'prod');
+    if (!clientes.length) return res.status(404).json({ success: false, message: 'Cliente no encontrado.' });
+
+    // Actualizar todas las suscripciones del cliente con el teléfono
+    const cfg = getCfg(env || 'prod');
+    const nodeFetch = (await import('node-fetch')).default;
+    const actualizaciones = await Promise.all(clientes.map(function(c) {
+      return nodeFetch(cfg.BASE + '/Customer/api/v1/Customer/' + c.id, {
+        method: 'PUT',
+        headers: { 'Authorization': cfg.KEY, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phone: telefono })
+      }).then(function(r) { return r.json(); }).catch(function(e) { return { error: e.message }; });
+    }));
+
+    console.log('[update-phone] doc:', documento, 'tel:', telefono, 'resultados:', JSON.stringify(actualizaciones));
+    res.json({ success: true, message: 'Teléfono actualizado.' });
+  } catch(e) { res.status(500).json({ success: false, message: e.message }); }
+});
+
 app.post('/api/auth/send-code', async (req, res) => {
   const doc = req.body.documento, env = req.body.env || 'prod';
   if (!doc) return res.status(400).json({ success: false, message: 'Documento requerido' });
