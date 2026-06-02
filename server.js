@@ -193,30 +193,35 @@ app.post('/api/auth/update-phone', async (req, res) => {
     // Actualizar todas las suscripciones del cliente con el teléfono
     const cfg = getCfg(env || 'prod');
     const nodeFetch = (await import('node-fetch')).default;
-    // Intentar actualizar con diferentes endpoints de WIP
+    // Actualizar cada suscripción con todos los campos requeridos + teléfono nuevo
     const actualizaciones = await Promise.all(clientes.map(async function(c) {
-      // Intento 1: PUT por ID de suscripción
-      const r1 = await nodeFetch(cfg.BASE + '/Customer/api/v1/Customer/' + c.id, {
+      const body = {
+        companyId: cfg.COMPANY_ID,
+        documentId: c.documentId || documento,
+        name: c.name || '',
+        phone: telefono,
+        email: c.email || null,
+        plate: c.plate || null,
+        address1: c.address1 || null,
+        location1: c.location1 || null,
+        address2: c.address2 || null,
+        location2: c.location2 || null,
+        businessUnitIds: c.businessUnitIds || [],
+        additionalData: c.additionalData || {}
+      };
+      const r = await nodeFetch(cfg.BASE + '/Customer/api/v1/Customer/' + c.id, {
         method: 'PUT',
         headers: { 'Authorization': cfg.KEY, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ phone: telefono, companyId: cfg.COMPANY_ID, documentId: documento, name: c.name })
+        body: JSON.stringify(body)
       });
-      const d1 = await r1.json().catch(() => ({}));
-      console.log('[update-phone] PUT /Customer/' + c.id + ' → status:', r1.status, 'resp:', JSON.stringify(d1));
-
-      // Intento 2: PATCH
-      const r2 = await nodeFetch(cfg.BASE + '/Customer/api/v1/Customer/' + c.id, {
-        method: 'PATCH',
-        headers: { 'Authorization': cfg.KEY, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ phone: telefono })
-      });
-      const d2 = await r2.json().catch(() => ({}));
-      console.log('[update-phone] PATCH /Customer/' + c.id + ' → status:', r2.status, 'resp:', JSON.stringify(d2));
-
-      return { put: { status: r1.status, data: d1 }, patch: { status: r2.status, data: d2 } };
+      const d = await r.json().catch(() => ({}));
+      console.log('[update-phone] PUT /Customer/' + c.id + ' → status:', r.status, 'resp:', JSON.stringify(d));
+      return { id: c.id, status: r.status, data: d };
     }));
 
-    res.json({ success: true, message: 'Teléfono procesado.', detalle: actualizaciones });
+    const exitosos = actualizaciones.filter(a => a.status >= 200 && a.status < 300).length;
+    console.log('[update-phone] Actualizados:', exitosos + '/' + actualizaciones.length);
+    res.json({ success: true, message: 'Teléfono actualizado en ' + exitosos + ' registros.' });
   } catch(e) { res.status(500).json({ success: false, message: e.message }); }
 });
 
