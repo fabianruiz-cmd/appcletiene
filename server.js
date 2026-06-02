@@ -193,16 +193,30 @@ app.post('/api/auth/update-phone', async (req, res) => {
     // Actualizar todas las suscripciones del cliente con el teléfono
     const cfg = getCfg(env || 'prod');
     const nodeFetch = (await import('node-fetch')).default;
-    const actualizaciones = await Promise.all(clientes.map(function(c) {
-      return nodeFetch(cfg.BASE + '/Customer/api/v1/Customer/' + c.id, {
+    // Intentar actualizar con diferentes endpoints de WIP
+    const actualizaciones = await Promise.all(clientes.map(async function(c) {
+      // Intento 1: PUT por ID de suscripción
+      const r1 = await nodeFetch(cfg.BASE + '/Customer/api/v1/Customer/' + c.id, {
         method: 'PUT',
         headers: { 'Authorization': cfg.KEY, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phone: telefono, companyId: cfg.COMPANY_ID, documentId: documento, name: c.name })
+      });
+      const d1 = await r1.json().catch(() => ({}));
+      console.log('[update-phone] PUT /Customer/' + c.id + ' → status:', r1.status, 'resp:', JSON.stringify(d1));
+
+      // Intento 2: PATCH
+      const r2 = await nodeFetch(cfg.BASE + '/Customer/api/v1/Customer/' + c.id, {
+        method: 'PATCH',
+        headers: { 'Authorization': cfg.KEY, 'Content-Type': 'application/json' },
         body: JSON.stringify({ phone: telefono })
-      }).then(function(r) { return r.json(); }).catch(function(e) { return { error: e.message }; });
+      });
+      const d2 = await r2.json().catch(() => ({}));
+      console.log('[update-phone] PATCH /Customer/' + c.id + ' → status:', r2.status, 'resp:', JSON.stringify(d2));
+
+      return { put: { status: r1.status, data: d1 }, patch: { status: r2.status, data: d2 } };
     }));
 
-    console.log('[update-phone] doc:', documento, 'tel:', telefono, 'resultados:', JSON.stringify(actualizaciones));
-    res.json({ success: true, message: 'Teléfono actualizado.' });
+    res.json({ success: true, message: 'Teléfono procesado.', detalle: actualizaciones });
   } catch(e) { res.status(500).json({ success: false, message: e.message }); }
 });
 
