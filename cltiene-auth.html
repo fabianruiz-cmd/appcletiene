@@ -11,12 +11,13 @@
       font-family: 'Inter', sans-serif;
       background: #07090f;
       color: #e8eaf2;
-      min-height: 100vh;
+      height: 100dvh;
       display: flex;
       flex-direction: column;
       align-items: center;
-      justify-content: center;
-      padding: 24px 24px 32px;
+      justify-content: space-between;
+      padding: 24px 16px 16px;
+      overflow: hidden;
       transition: background .3s, color .3s;
     }
     body.light-mode { background: #f0f2f5; color: #1a202c; }
@@ -41,7 +42,7 @@
     }
     body.light-mode .btn-modo { border-color: #dde1ea; color: #64748b; }
 
-    .container { width: 100%; max-width: 440px; text-align: center; }
+    .container { width: 100%; max-width: 440px; text-align: center; flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; }
     .logo-wrap { margin-bottom: 28px; }
     .logo-wrap img { height: 64px; object-fit: contain; }
 
@@ -503,14 +504,16 @@ function toggleModo() {
 <style>
   #slider-wrap {
     width: 100%; max-width: 440px;
-    margin: 24px auto 0;
-    padding: 0;
+    flex-shrink: 0;
   }
   #slider-viewport {
     width: 100%; overflow: hidden;
-    position: relative; height: 260px;
+    position: relative; height: 220px;
     border-radius: 16px;
     box-shadow: 0 8px 32px rgba(0,0,0,.4);
+  }
+  @media (max-height: 700px) {
+    #slider-viewport { height: 160px; }
   }
   #slider-track {
     display: flex;
@@ -528,7 +531,7 @@ function toggleModo() {
   .scard img {
     width: 100%; height: 100%;
     object-fit: cover; display: block;
-    filter: brightness(0.7);
+    filter: brightness(1);
   }
   .scard-overlay {
     position: absolute; bottom: 0; left: 0; right: 0;
