@@ -1,4 +1,4 @@
-require('dotenv').config();
+ require('dotenv').config();
 const express = require('express');
 const path    = require('path');
 const app     = express();
@@ -587,14 +587,20 @@ app.get('/api/suscriptores/total', async (req, res) => {
     const nodeFetch = (await import('node-fetch')).default;
 
     const seen = new Set();
-    const promesas = bus.map(bu =>
-      nodeFetch(cfg.BASE + '/Customer/api/v1/Customer/Subscription?companyId=' + cfg.COMPANY_ID + '&businessUnitId=' + bu.id + '&searchTerm=', {
-        headers: { 'Authorization': cfg.KEY }
-      }).then(r => r.json()).then(data => {
-        const items = Array.isArray(data) ? data : (data && data.id ? [data] : []);
-        items.forEach(c => { if (c.documentId) seen.add(c.documentId); });
-      }).catch(() => {})
-    );
+    const terminos = ['0','1','2','3','4','5','6','7','8','9'];
+    const promesas = [];
+    for (const bu of bus) {
+      for (const term of terminos) {
+        promesas.push(
+          nodeFetch(cfg.BASE + '/Customer/api/v1/Customer/Subscription?companyId=' + cfg.COMPANY_ID + '&businessUnitId=' + bu.id + '&searchTerm=' + term, {
+            headers: { 'Authorization': cfg.KEY }
+          }).then(r => r.json()).then(data => {
+            const items = Array.isArray(data) ? data : (data && data.id ? [data] : []);
+            items.forEach(c => { if (c.documentId) seen.add(c.documentId); });
+          }).catch(() => {})
+        );
+      }
+    }
     await Promise.all(promesas);
 
     res.json({
