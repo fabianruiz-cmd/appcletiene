@@ -15,8 +15,8 @@
       display: flex;
       flex-direction: column;
       align-items: center;
-      justify-content: flex-start;
-      padding: 40px 24px 0;
+      justify-content: center;
+      padding: 24px 24px 260px;
       transition: background .3s, color .3s;
     }
     body.light-mode { background: #f0f2f5; color: #1a202c; }
@@ -502,19 +502,15 @@ function toggleModo() {
 <!-- SLIDER DE PLANES v1780494020 -->
 <style>
   #slider-wrap {
-    position: fixed; bottom: 0; left: 0; width: 100%;
-    z-index: 100; padding: 0;
+    position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%);
+    width: 100%; max-width: 480px;
+    z-index: 100; padding: 0 16px;
   }
-  /* Empujar el contenido arriba para no quedar tapado por el slider */
-  body { padding-bottom: 0 !important; }
-  .container { margin-bottom: 130px; }
-  @media (max-width: 600px) { .container { margin-bottom: 180px; } }
   #slider-viewport {
     width: 100%; overflow: hidden;
-    position: relative; height: 110px;
-  }
-  @media (max-width: 600px) {
-    #slider-viewport { height: 160px; }
+    position: relative; height: 220px;
+    border-radius: 16px;
+    box-shadow: 0 8px 32px rgba(0,0,0,.4);
   }
   #slider-track {
     display: flex;
