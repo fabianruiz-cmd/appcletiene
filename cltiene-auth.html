@@ -501,94 +501,146 @@ function toggleModo() {
 
 <!-- SLIDER DE PLANES -->
 <style>
-  body { padding-bottom: 160px; }
+  body { padding-bottom: 240px; }
   #slider-wrap {
     position: fixed; bottom: 0; left: 0; width: 100%;
-    background: linear-gradient(to top, #07090f 60%, transparent);
-    padding: 8px 0 16px; z-index: 100;
-  }
-  body.light-mode #slider-wrap {
-    background: linear-gradient(to top, #f0f2f5 60%, transparent);
-  }
-  #slider-label {
-    text-align: center; font-size: 10px; font-weight: 600;
-    letter-spacing: 2px; text-transform: uppercase;
-    color: #3a4560; margin-bottom: 8px;
+    z-index: 100; padding: 0;
   }
   #slider-viewport {
     width: 100%; overflow: hidden;
+    position: relative; height: 220px;
   }
   #slider-track {
-    display: flex; gap: 12px; padding: 2px 0;
+    display: flex;
+    height: 100%;
     will-change: transform;
+    transition: transform 0.5s cubic-bezier(.4,0,.2,1);
   }
   .scard {
-    flex: 0 0 120px; background: #111318;
-    border: 1px solid #1e2535; border-radius: 12px;
-    overflow: hidden; text-decoration: none;
-    display: block; transition: border-color .2s;
+    flex: 0 0 100%;
+    position: relative;
+    text-decoration: none;
+    display: block;
+    overflow: hidden;
   }
-  .scard:hover { border-color: #0d7a5f; }
-  .scard img { width: 120px; height: 80px; object-fit: cover; display: block; }
-  .scard span {
-    display: block; font-size: 10px; font-weight: 700;
-    color: #e8eaf2; text-align: center; padding: 5px 4px 7px;
+  .scard img {
+    width: 100%; height: 220px;
+    object-fit: cover; display: block;
+    filter: brightness(0.7);
   }
-  body.light-mode .scard { background: #fff; border-color: #dde1ea; }
-  body.light-mode .scard span { color: #1a202c; }
+  .scard-overlay {
+    position: absolute; bottom: 0; left: 0; right: 0;
+    padding: 16px 20px 20px;
+    background: linear-gradient(to top, rgba(0,0,0,.75) 0%, transparent 100%);
+  }
+  .scard-tag {
+    font-size: 10px; font-weight: 700; letter-spacing: 1.5px;
+    text-transform: uppercase; color: #0d7a5f; margin-bottom: 4px;
+  }
+  .scard-title {
+    font-size: 18px; font-weight: 800; color: #fff;
+    margin-bottom: 10px; line-height: 1.2;
+  }
+  .scard-btn {
+    display: inline-block; padding: 8px 18px;
+    background: #0d7a5f; color: #fff;
+    border-radius: 20px; font-size: 12px; font-weight: 700;
+    text-decoration: none;
+  }
+  .scard-btn:hover { background: #0a6650; }
+
+  /* Botones nav */
+  .slider-nav {
+    position: absolute; top: 50%; transform: translateY(-50%);
+    width: 32px; height: 32px; border-radius: 50%;
+    background: rgba(255,255,255,.2); border: none;
+    color: #fff; font-size: 16px; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    z-index: 10; backdrop-filter: blur(4px);
+    transition: background .2s;
+  }
+  .slider-nav:hover { background: rgba(255,255,255,.4); }
+  #slider-prev { left: 12px; }
+  #slider-next { right: 12px; }
+
+  /* Dots */
+  #slider-dots {
+    position: absolute; bottom: 10px; left: 50%; transform: translateX(-50%);
+    display: flex; gap: 6px; z-index: 10;
+  }
+  .sdot {
+    width: 6px; height: 6px; border-radius: 3px;
+    background: rgba(255,255,255,.4);
+    transition: all .3s; cursor: pointer;
+  }
+  .sdot.active { width: 20px; background: #fff; }
 </style>
 
 <div id="slider-wrap">
-  <p id="slider-label">Nuestros Planes</p>
   <div id="slider-viewport">
     <div id="slider-track"></div>
+    <button class="slider-nav" id="slider-prev">&#8249;</button>
+    <button class="slider-nav" id="slider-next">&#8250;</button>
+    <div id="slider-dots"></div>
   </div>
 </div>
 
 <script>
 var PLANES = [
-  { n:'Plan Salud',     img:'https://cltiene.com/wp-content/uploads/2026/03/Plan-Mascotas-5-1024x1024.png',  url:'https://cltiene.com/product/plan-salud-estandar/' },
-  { n:'Plan Movilidad', img:'https://cltiene.com/wp-content/uploads/2026/03/Plan-Mascotas-6-1024x1024.png',  url:'https://cltiene.com/product/plan-movilidad-estandar/' },
-  { n:'Plan Manada',    img:'https://cltiene.com/wp-content/uploads/2026/03/Plan-Mascotas-11-1024x1024.png', url:'https://cltiene.com/product/plan-manada-estandar/' },
-  { n:'Plan Mascotas',  img:'https://cltiene.com/wp-content/uploads/2026/03/Plan-Mascotas-2-1024x1024.png',  url:'https://cltiene.com/product/plan-mascotas-estandar/' },
-  { n:'Plan Premium',   img:'https://cltiene.com/wp-content/uploads/2026/03/Plan-Mascotas-12-1024x1024.png', url:'https://cltiene.com/product/plan-estandar-premium/' }
+  { n:'Plan Salud',     sub:'Tu médico a una llamada',          img:'https://cltiene.com/wp-content/uploads/2026/03/Plan-Mascotas-5-1024x1024.png',  url:'https://cltiene.com/product/plan-salud-estandar/' },
+  { n:'Plan Movilidad', sub:'Asistencia para carro y moto',     img:'https://cltiene.com/wp-content/uploads/2026/03/Plan-Mascotas-6-1024x1024.png',  url:'https://cltiene.com/product/plan-movilidad-estandar/' },
+  { n:'Plan Manada',    sub:'Cuida a toda tu familia',           img:'https://cltiene.com/wp-content/uploads/2026/03/Plan-Mascotas-11-1024x1024.png', url:'https://cltiene.com/product/plan-manada-estandar/' },
+  { n:'Plan Mascotas',  sub:'Veterinario en casa sin estrés',    img:'https://cltiene.com/wp-content/uploads/2026/03/Plan-Mascotas-2-1024x1024.png',  url:'https://cltiene.com/product/plan-mascotas-estandar/' },
+  { n:'Plan Premium',   sub:'Protección total para tu familia',  img:'https://cltiene.com/wp-content/uploads/2026/03/Plan-Mascotas-12-1024x1024.png', url:'https://cltiene.com/product/plan-estandar-premium/' }
 ];
 
 (function() {
   var track = document.getElementById('slider-track');
-  // Renderizar 3 copias para loop sin corte
-  [0,1,2].forEach(function() {
-    PLANES.forEach(function(p) {
-      var a = document.createElement('a');
-      a.className = 'scard';
-      a.href = p.url;
-      a.target = '_blank';
-      a.rel = 'noopener noreferrer';
-      a.innerHTML = '<img src="'+p.img+'" alt="'+p.n+'" loading="lazy"><span>'+p.n+'</span>';
-      track.appendChild(a);
-    });
+  var dotsEl = document.getElementById('slider-dots');
+  var current = 0, autoplay, N = PLANES.length;
+
+  // Renderizar cards
+  PLANES.forEach(function(p, i) {
+    var a = document.createElement('a');
+    a.className = 'scard';
+    a.href = p.url;
+    a.target = '_blank';
+    a.rel = 'noopener noreferrer';
+    a.innerHTML = '<img src="'+p.img+'" alt="'+p.n+'" loading="lazy">'
+      + '<div class="scard-overlay">'
+      + '<div class="scard-tag">'+p.n+' CLTIENE</div>'
+      + '<div class="scard-title">'+p.sub+'</div>'
+      + '<span class="scard-btn">Conocer más →</span>'
+      + '</div>';
+    track.appendChild(a);
+
+    var dot = document.createElement('div');
+    dot.className = 'sdot' + (i===0?' active':'');
+    dot.onclick = function(e){ e.preventDefault(); goTo(i); resetAuto(); };
+    dotsEl.appendChild(dot);
   });
 
-  var CARD = 132; // 120px + 12px gap
-  var SET  = PLANES.length * CARD; // ancho de 1 set
-  var x = 0;
-  var paused = false;
-  var vp = document.getElementById('slider-viewport');
-
-  vp.addEventListener('mouseenter', function(){ paused = true; });
-  vp.addEventListener('mouseleave', function(){ paused = false; });
-  vp.addEventListener('touchstart', function(){ paused = true; }, {passive:true});
-  vp.addEventListener('touchend',   function(){ setTimeout(function(){ paused = false; }, 2500); }, {passive:true});
-
-  function tick() {
-    if (!paused) {
-      x += 0.5;
-      if (x >= SET) x -= SET;
-      track.style.transform = 'translateX(-' + x + 'px)';
-    }
-    requestAnimationFrame(tick);
+  function goTo(idx) {
+    current = (idx + N) % N;
+    track.style.transform = 'translateX(-' + (current * 100) + '%)';
+    dotsEl.querySelectorAll('.sdot').forEach(function(d,i){ d.classList.toggle('active', i===current); });
   }
-  requestAnimationFrame(tick);
+
+  function resetAuto() { clearInterval(autoplay); autoplay = setInterval(function(){ goTo(current+1); }, 3500); }
+
+  document.getElementById('slider-prev').onclick = function(){ goTo(current-1); resetAuto(); };
+  document.getElementById('slider-next').onclick = function(){ goTo(current+1); resetAuto(); };
+
+  // Swipe
+  var sx = 0;
+  var vp = document.getElementById('slider-viewport');
+  vp.addEventListener('touchstart', function(e){ sx = e.touches[0].clientX; }, {passive:true});
+  vp.addEventListener('touchend', function(e){
+    var diff = sx - e.changedTouches[0].clientX;
+    if (Math.abs(diff) > 40) { goTo(diff>0 ? current+1 : current-1); resetAuto(); }
+  }, {passive:true});
+
+  resetAuto();
 })();
 </script>
 
