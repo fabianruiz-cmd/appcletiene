@@ -7,6 +7,31 @@
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet"/>
   <style>
     :root {
+      --is-dark: 1;
+    }
+    body.light-mode {
+      --bg: #f0f2f5;
+      --surface: #ffffff;
+      --surface2: #f8fafc;
+      --border: #dde1ea;
+      --text: #1a202c;
+      --muted: #64748b;
+      --muted2: #8090b0;
+      --incoming: #ffffff;
+      --outgoing: #d1fae5;
+    }
+    body.light-mode .topbar { background: #fff; }
+    body.light-mode .chats-panel { background: #fff; }
+    body.light-mode .chat-item:hover { background: #f8fafc; }
+    body.light-mode .msg-header { background: #fff; }
+    body.light-mode .msg-input-bar { background: #fff; }
+    body.light-mode .msg-input-bar textarea { background: #f8fafc; border-color: #dde1ea; color: #1a202c; }
+    body.light-mode .chats-search input { background: #f8fafc; border-color: #dde1ea; color: #1a202c; }
+    body.light-mode .msg-bubble.incoming { color: #1a202c; }
+    body.light-mode .msg-bubble.outgoing { color: #065f46; }
+    body.light-mode .btn-icon { background: #f8fafc; border-color: #dde1ea; color: #64748b; }
+
+    :root {
       --bg: #0a0d12;
       --surface: #111520;
       --surface2: #161c28;
@@ -229,14 +254,16 @@
 <!-- Topbar -->
 <div class="topbar">
   <div class="topbar-left">
-    <div class="topbar-logo">CL<span>TIENE</span></div>
+    <img id="chat-logo"
+         src="https://raw.githubusercontent.com/fabianruiz-cmd/appcletiene/refs/heads/main/logo-dark.png"
+         alt="CL TIENE" style="height:36px;object-fit:contain;"
+         onerror="this.style.display='none';document.getElementById('logo-fallback').style.display='block'"/>
+    <div id="logo-fallback" style="display:none;font-size:16px;font-weight:700;color:#e8eaf2">CL<span style="color:#0d7a5f">TIENE</span></div>
     <span class="topbar-badge">WhatsApp</span>
   </div>
   <div class="topbar-right">
     <div class="btn-icon" id="btn-refresh" onclick="loadChats()" title="Actualizar">↻</div>
-    <a href="/" style="text-decoration:none">
-      <div class="btn-icon" title="Volver al Dashboard">⌂</div>
-    </a>
+    <div class="btn-icon" id="btn-modo" onclick="toggleModo()" title="Modo claro/oscuro">🌙</div>
   </div>
 </div>
 
@@ -465,6 +492,30 @@ function autoResize(el) {
   el.style.height = 'auto';
   el.style.height = Math.min(el.scrollHeight, 120) + 'px';
 }
+
+// ── Modo claro/oscuro ────────────────────────────────────────────────────────
+const LOGO_OSCURO = 'https://raw.githubusercontent.com/fabianruiz-cmd/appcletiene/refs/heads/main/logo-dark.png';
+const LOGO_CLARO  = 'https://raw.githubusercontent.com/fabianruiz-cmd/appcletiene/refs/heads/main/logo-CL.png';
+
+function toggleModo() {
+  const isLight = document.body.classList.toggle('light-mode');
+  const btn = document.getElementById('btn-modo');
+  btn.textContent = isLight ? '☀️' : '🌙';
+  localStorage.setItem('chat-modo', isLight ? 'light' : 'dark');
+  const img = document.getElementById('chat-logo');
+  if (img) img.src = isLight ? LOGO_CLARO : LOGO_OSCURO;
+}
+
+// Aplicar modo guardado
+(function() {
+  const modo = localStorage.getItem('chat-modo');
+  if (modo === 'light') {
+    document.body.classList.add('light-mode');
+    document.getElementById('btn-modo').textContent = '☀️';
+    const img = document.getElementById('chat-logo');
+    if (img) img.src = LOGO_CLARO;
+  }
+})();
 
 // Cargar al inicio
 loadChats();
