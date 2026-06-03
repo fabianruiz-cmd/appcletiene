@@ -1,4 +1,4 @@
-require('dotenv').config();
+ require('dotenv').config();
 const express = require('express');
 const path    = require('path');
 const app     = express();
@@ -564,6 +564,19 @@ app.get('/api/bus', async (req, res) => {
     const bus = (r.data.businessUnits || []).map(b => ({ id: b.id, name: b.name, tipos: (b.serviceTypes||[]).map(s=>s.name) }));
     res.json(bus);
   } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+app.get('/api/usuarios', async (req, res) => {
+  if (!SUPABASE_URL || !SUPABASE_ANON_KEY) return res.json({ ok: false, error: 'Supabase no configurado' });
+  try {
+    const nodeFetch = (await import('node-fetch')).default;
+    // Traer todos los registros
+    const r = await nodeFetch(SUPABASE_URL + '/rest/v1/customer_phones?select=document_id,phone,created_at&order=created_at.desc', {
+      headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': 'Bearer ' + SUPABASE_ANON_KEY }
+    });
+    const data = await r.json();
+    res.json({ ok: true, total: Array.isArray(data) ? data.length : 0, usuarios: data });
+  } catch(e) { res.json({ ok: false, error: e.message }); }
 });
 
 app.get('/api/health', function(req, res) {
