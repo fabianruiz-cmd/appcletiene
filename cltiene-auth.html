@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+ <!DOCTYPE html>
 <html lang="es">
 <head>
   <meta charset="UTF-8"/>
@@ -11,15 +11,25 @@
       font-family: 'Inter', sans-serif;
       background: #07090f;
       color: #e8eaf2;
-      height: 100dvh;
+      min-height: 100vh;
       display: flex;
       flex-direction: column;
       align-items: center;
-      justify-content: space-between;
-      padding: 24px 16px 16px;
-      overflow: hidden;
+      justify-content: center;
+      padding: 24px 24px 260px;
       transition: background .3s, color .3s;
+      position: relative;
     }
+    body::before {
+      content: '';
+      position: fixed; inset: 0;
+      background: url('https://raw.githubusercontent.com/fabianruiz-cmd/appcletiene/refs/heads/main/banner-telcos-1.jpg') center/cover no-repeat;
+      opacity: 0.35;
+      z-index: 0;
+      pointer-events: none;
+    }
+    body.light-mode::before { opacity: 0.15; }
+    .container, #slider-wrap { position: relative; z-index: 1; }
     body.light-mode { background: #f0f2f5; color: #1a202c; }
     body.light-mode .card { background: #ffffff; border-color: #dde1ea; }
     body.light-mode .field input { background: #f8fafc; border-color: #dde1ea; color: #1a202c; }
