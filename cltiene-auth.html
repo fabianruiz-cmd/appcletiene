@@ -16,7 +16,7 @@
       flex-direction: column;
       align-items: center;
       justify-content: center;
-      padding: 24px 24px 320px;
+      padding: 24px 24px 32px;
       transition: background .3s, color .3s;
     }
     body.light-mode { background: #f0f2f5; color: #1a202c; }
@@ -502,13 +502,13 @@ function toggleModo() {
 <!-- SLIDER DE PLANES v1780494020 -->
 <style>
   #slider-wrap {
-    position: fixed; bottom: 12px; left: 50%; transform: translateX(-50%);
-    width: 100%; max-width: 480px;
-    z-index: 100; padding: 0 16px;
+    width: 100%; max-width: 440px;
+    margin: 24px auto 0;
+    padding: 0;
   }
   #slider-viewport {
     width: 100%; overflow: hidden;
-    position: relative; height: 280px;
+    position: relative; height: 260px;
     border-radius: 16px;
     box-shadow: 0 8px 32px rgba(0,0,0,.4);
   }
