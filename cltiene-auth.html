@@ -501,14 +501,18 @@ function toggleModo() {
 
 <!-- SLIDER DE PLANES -->
 <style>
-  body { padding-bottom: 240px; }
+  body { padding-bottom: 200px; }
   #slider-wrap {
     position: fixed; bottom: 0; left: 0; width: 100%;
     z-index: 100; padding: 0;
   }
   #slider-viewport {
     width: 100%; overflow: hidden;
-    position: relative; height: 220px;
+    position: relative; height: 140px;
+  }
+  @media (max-width: 600px) {
+    #slider-viewport { height: 200px; }
+    body { padding-bottom: 220px; }
   }
   #slider-track {
     display: flex;
@@ -524,27 +528,30 @@ function toggleModo() {
     overflow: hidden;
   }
   .scard img {
-    width: 100%; height: 220px;
+    width: 100%; height: 140px;
     object-fit: cover; display: block;
     filter: brightness(0.7);
   }
+  @media (max-width: 600px) {
+    .scard img { height: 200px; }
+  }
   .scard-overlay {
     position: absolute; bottom: 0; left: 0; right: 0;
-    padding: 16px 20px 20px;
+    padding: 10px 16px 14px;
     background: linear-gradient(to top, rgba(0,0,0,.75) 0%, transparent 100%);
   }
   .scard-tag {
-    font-size: 10px; font-weight: 700; letter-spacing: 1.5px;
-    text-transform: uppercase; color: #0d7a5f; margin-bottom: 4px;
+    font-size: 9px; font-weight: 700; letter-spacing: 1.5px;
+    text-transform: uppercase; color: #0d7a5f; margin-bottom: 2px;
   }
   .scard-title {
-    font-size: 18px; font-weight: 800; color: #fff;
-    margin-bottom: 10px; line-height: 1.2;
+    font-size: 15px; font-weight: 800; color: #fff;
+    margin-bottom: 8px; line-height: 1.2;
   }
   .scard-btn {
-    display: inline-block; padding: 8px 18px;
+    display: inline-block; padding: 5px 14px;
     background: #0d7a5f; color: #fff;
-    border-radius: 20px; font-size: 12px; font-weight: 700;
+    border-radius: 20px; font-size: 11px; font-weight: 700;
     text-decoration: none;
   }
   .scard-btn:hover { background: #0a6650; }
