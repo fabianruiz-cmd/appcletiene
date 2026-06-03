@@ -1,4 +1,4 @@
- require('dotenv').config();
+require('dotenv').config();
 const express = require('express');
 const path    = require('path');
 const app     = express();
@@ -570,12 +570,39 @@ app.get('/api/usuarios', async (req, res) => {
   if (!SUPABASE_URL || !SUPABASE_ANON_KEY) return res.json({ ok: false, error: 'Supabase no configurado' });
   try {
     const nodeFetch = (await import('node-fetch')).default;
-    // Traer todos los registros
     const r = await nodeFetch(SUPABASE_URL + '/rest/v1/customer_phones?select=document_id,phone,created_at&order=created_at.desc', {
       headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': 'Bearer ' + SUPABASE_ANON_KEY }
     });
     const data = await r.json();
     res.json({ ok: true, total: Array.isArray(data) ? data.length : 0, usuarios: data });
+  } catch(e) { res.json({ ok: false, error: e.message }); }
+});
+
+// Total de suscriptores en WIP
+app.get('/api/suscriptores/total', async (req, res) => {
+  try {
+    const cfg = getCfg('prod');
+    const buRes = await wipFetch('/business/api/v1/BusinessUnit/company/' + cfg.COMPANY_ID + '/business-units/services', 'GET', null, 'prod');
+    const bus = buRes.data.businessUnits || [];
+    const nodeFetch = (await import('node-fetch')).default;
+
+    const seen = new Set();
+    const promesas = bus.map(bu =>
+      nodeFetch(cfg.BASE + '/Customer/api/v1/Customer/Subscription?companyId=' + cfg.COMPANY_ID + '&businessUnitId=' + bu.id + '&searchTerm=', {
+        headers: { 'Authorization': cfg.KEY }
+      }).then(r => r.json()).then(data => {
+        const items = Array.isArray(data) ? data : (data && data.id ? [data] : []);
+        items.forEach(c => { if (c.documentId) seen.add(c.documentId); });
+      }).catch(() => {})
+    );
+    await Promise.all(promesas);
+
+    res.json({
+      ok: true,
+      total_suscriptores: seen.size,
+      total_telefonos_supabase: null,
+      nota: 'Total de documentos únicos con suscripción en WIP'
+    });
   } catch(e) { res.json({ ok: false, error: e.message }); }
 });
 
