@@ -321,6 +321,7 @@
   <div class="topbar-right">
     <div class="btn-icon" id="btn-refresh" onclick="loadChats()" title="Actualizar">↻</div>
     <div class="btn-icon" id="btn-modo" onclick="toggleModo()" title="Modo claro/oscuro">🌙</div>
+    <div class="btn-icon" onclick="cerrarSesion()" title="Cerrar sesión" style="color:#f87171">⏻</div>
   </div>
 </div>
 
@@ -578,6 +579,13 @@ function autoResize(el) {
 // ── Modo claro/oscuro ────────────────────────────────────────────────────────
 const LOGO_OSCURO = 'https://cltiene.com/wp-content/uploads/2026/01/e0280ba2b169453b2ae09ecf07c2b8d01673e12b.png';
 const LOGO_CLARO  = 'https://cltiene.com/wp-content/uploads/2025/10/logo-CL.png';
+
+function cerrarSesion() {
+  if (confirm('¿Cerrar sesión?')) {
+    sessionStorage.removeItem('chat-auth');
+    location.reload();
+  }
+}
 
 function toggleModo() {
   const isLight = document.body.classList.toggle('light-mode');
