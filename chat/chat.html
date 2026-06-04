@@ -84,6 +84,41 @@
     #btn-refresh.spinning { animation: spin .8s linear infinite; }
     @keyframes spin { to { transform: rotate(360deg); } }
 
+    /* ── Login ── */
+    #login-screen {
+      position: fixed; inset: 0; z-index: 9999;
+      background: var(--bg);
+      display: flex; align-items: center; justify-content: center;
+      flex-direction: column; gap: 24px;
+    }
+    .login-card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 20px; padding: 36px 32px; width: 100%; max-width: 380px;
+      text-align: center;
+    }
+    .login-logo { height: 52px; object-fit: contain; margin-bottom: 8px; }
+    .login-title { font-size: 20px; font-weight: 700; color: var(--text); margin-bottom: 4px; }
+    .login-sub { font-size: 13px; color: var(--muted); margin-bottom: 24px; }
+    .login-field { margin-bottom: 14px; text-align: left; }
+    .login-field label { display: block; font-size: 11px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; margin-bottom: 6px; }
+    .login-field input {
+      width: 100%; background: var(--bg); border: 1.5px solid var(--border);
+      border-radius: 10px; padding: 11px 14px; color: var(--text);
+      font-family: 'DM Sans', sans-serif; font-size: 14px; outline: none;
+      transition: border-color .15s;
+    }
+    .login-field input:focus { border-color: var(--primary); }
+    .login-field input::placeholder { color: var(--muted); }
+    .login-btn {
+      width: 100%; padding: 12px; border-radius: 10px; border: none;
+      background: var(--primary); color: #fff; font-family: 'DM Sans', sans-serif;
+      font-size: 14px; font-weight: 600; cursor: pointer; transition: background .15s;
+      margin-top: 4px;
+    }
+    .login-btn:hover { background: #0a6650; }
+    .login-err { color: #f87171; font-size: 12px; margin-top: 8px; display: none; }
+    .login-err.show { display: block; }
+
     /* ── Layout ── */
     .layout {
       display: flex; flex: 1; overflow: hidden;
@@ -251,6 +286,28 @@
 </head>
 <body>
 
+<!-- Login Screen -->
+<div id="login-screen">
+  <div class="login-card">
+    <img class="login-logo" id="login-logo"
+         src="https://cltiene.com/wp-content/uploads/2026/01/e0280ba2b169453b2ae09ecf07c2b8d01673e12b.png"
+         alt="CL TIENE"
+         onerror="this.style.display='none'"/>
+    <div class="login-title">CL TIENE Chat</div>
+    <div class="login-sub">Acceso restringido — solo agentes autorizados</div>
+    <div class="login-field">
+      <label>Usuario</label>
+      <input type="email" id="login-user" placeholder="chat@cltiene.com" onkeydown="if(event.key==='Enter')doLogin()"/>
+    </div>
+    <div class="login-field">
+      <label>Contraseña</label>
+      <input type="password" id="login-pass" placeholder="••••••••" onkeydown="if(event.key==='Enter')doLogin()"/>
+    </div>
+    <button class="login-btn" onclick="doLogin()">Ingresar →</button>
+    <div class="login-err" id="login-err">Usuario o contraseña incorrectos</div>
+  </div>
+</div>
+
 <!-- Topbar -->
 <div class="topbar">
   <div class="topbar-left">
@@ -313,6 +370,31 @@
 </div>
 
 <script>
+// ── Login ─────────────────────────────────────────────────────────────────────
+const CHAT_USER = 'chat@cltiene.com';
+const CHAT_PASS = 'hW7PDK8rXC';
+
+function doLogin() {
+  const user = document.getElementById('login-user').value.trim();
+  const pass = document.getElementById('login-pass').value;
+  const err  = document.getElementById('login-err');
+  if (user === CHAT_USER && pass === CHAT_PASS) {
+    sessionStorage.setItem('chat-auth', '1');
+    document.getElementById('login-screen').style.display = 'none';
+    loadChats();
+  } else {
+    err.classList.add('show');
+    document.getElementById('login-pass').value = '';
+  }
+}
+
+// Verificar sesión al cargar
+(function() {
+  if (sessionStorage.getItem('chat-auth') === '1') {
+    document.getElementById('login-screen').style.display = 'none';
+  }
+})();
+
 const WA_URL   = '/wa-proxy';  // Proxy en el servidor para evitar CORS
 const WA_TOKEN = 'WwW3UAz2x6iJ0nasEd7ar5WFoVsxnGpc';
 
@@ -517,10 +599,10 @@ function toggleModo() {
   }
 })();
 
-// Cargar al inicio
-loadChats();
-// Auto-actualizar cada 30s
-setInterval(loadChats, 30000);
+// Auto-actualizar cada 30s (solo si autenticado)
+setInterval(function() {
+  if (sessionStorage.getItem('chat-auth') === '1') loadChats();
+}, 30000);
 </script>
 </body>
 </html>
