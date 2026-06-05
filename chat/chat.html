@@ -508,16 +508,13 @@ function setFilter(f) {
 
 function getFilteredChats() {
   if (!isAdmin()) {
-    // Agente: solo ve sus chats asignados
-    return allChats.filter(c => {
-      const a = chatAssignments[c.id];
-      return a && a.agent_id === currentAgent.id;
-    });
+    // Agente: ve TODOS los chats (puede leer cualquiera, solo escribe en los suyos)
+    return allChats;
   }
   // Admin: aplica filtro seleccionado
   switch(activeFilter) {
     case 'sin':  return allChats.filter(c => !chatAssignments[c.id]);
-    case 'mios': return allChats.filter(c => chatAssignments[c.id]); // admin ve todos los asignados
+    case 'mios': return allChats.filter(c => chatAssignments[c.id]);
     default:     return allChats;
   }
 }
@@ -589,14 +586,6 @@ async function loadChats() {
 function renderChats(chats) {
   const list = document.getElementById('chats-list');
 
-  // Agente sin chats asignados
-  if (!chats.length && !isAdmin()) {
-    list.innerHTML = '<div style="padding:32px 16px;text-align:center;color:var(--muted)">'
-      + '<div style="font-size:40px;margin-bottom:12px;opacity:.4">📭</div>'
-      + '<p style="font-size:13px">No tienes chats asignados.<br>Espera a que el admin te asigne uno.</p>'
-      + '</div>';
-    return;
-  }
   if (!chats.length) {
     list.innerHTML = '<p style="padding:24px;text-align:center;color:var(--muted);font-size:13px">Sin chats</p>';
     return;
