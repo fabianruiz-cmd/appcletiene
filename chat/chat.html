@@ -274,10 +274,11 @@
         </div>
         <div class="msg-list" id="msg-list"></div>
         <div class="msg-input-bar">
-          <textarea id="msg-input" placeholder="Escribe un mensaje..." rows="1"
+          <textarea id="msg-input" placeholder="⚠️ Asigna un agente para habilitar el chat..." rows="1"
+            disabled style="opacity:.5;cursor:not-allowed;"
             onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendMessage();}"
             oninput="this.style.height='auto';this.style.height=Math.min(this.scrollHeight,100)+'px'"></textarea>
-          <button class="btn-send" id="btn-send" onclick="sendMessage()">➤</button>
+          <button class="btn-send" id="btn-send" onclick="sendMessage()" disabled style="opacity:.4">➤</button>
         </div>
       </div>
     </div>
@@ -397,6 +398,8 @@ async function assignChat() {
     chatAssignments[currentChatId] = { agent_id: agent.id, agent_name: agent.name, agent_color: agent.color };
     updateChatAgentLabel(currentChatId);
     renderChats(allChats);
+    // Habilitar input al asignar
+    enableChatInput(true);
   } catch(e) { alert('Error al asignar'); }
 }
 
@@ -503,6 +506,12 @@ async function openChat(chatId, name) {
   view.style.display = 'flex';
   updateChatAgentLabel(chatId);
   renderChats(allChats);
+  // Habilitar input solo si tiene agente asignado
+  enableChatInput(!!chatAssignments[chatId]);
+  // Preseleccionar agente si ya tiene uno
+  const currAssign = chatAssignments[chatId];
+  const sel = document.getElementById('assign-select');
+  sel.value = currAssign ? currAssign.agent_id : '';
   document.getElementById('chats-panel').classList.add('hidden');
   document.getElementById('messages-panel').classList.add('active');
 
@@ -588,6 +597,17 @@ function cerrarSesion() {
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
+function enableChatInput(enabled) {
+  const input = document.getElementById('msg-input');
+  const btn   = document.getElementById('btn-send');
+  input.disabled = !enabled;
+  btn.disabled   = !enabled;
+  input.style.opacity = enabled ? '1' : '.5';
+  input.style.cursor  = enabled ? 'text' : 'not-allowed';
+  btn.style.opacity   = enabled ? '1' : '.4';
+  input.placeholder   = enabled ? 'Escribe un mensaje...' : '⚠️ Asigna un agente para habilitar el chat...';
+}
+
 function formatPhone(id) { return '+' + String(id).replace('@s.whatsapp.net','').replace('@g.us',''); }
 function formatTime(ts) {
   const d = new Date(ts * 1000), now = new Date();
