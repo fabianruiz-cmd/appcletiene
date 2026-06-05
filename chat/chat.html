@@ -659,6 +659,29 @@ async function openChat(chatId, name) {
   document.getElementById('chats-panel').classList.add('hidden');
   document.getElementById('messages-panel').classList.add('active');
 
+  // Auto-asignación round robin si no tiene agente
+  if (!chatAssignments[chatId]) {
+    try {
+      const r = await fetch('/api/auto-assign', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ chat_id: chatId, chat_name: name })
+      });
+      const data = await r.json();
+      if (data.ok && data.agent) {
+        chatAssignments[chatId] = {
+          agent_id: data.agent.id,
+          agent_name: data.agent.name,
+          agent_color: data.agent.color
+        };
+        updateChatAgentLabel(chatId);
+        checkChatAccess(chatId);
+        renderChats(getFilteredChats());
+        if (isAdmin()) updateAdminStats();
+      }
+    } catch(e) {}
+  }
+
   // Log: apertura
   try {
     await sbFetch('/log', 'POST', {
