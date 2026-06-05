@@ -285,12 +285,13 @@
         </div>
       </div>
 
-      <!-- Filtros (solo admin) -->
+      <!-- Filtros estado (solo admin) -->
       <div class="admin-filters" id="admin-filters" style="display:none">
         <div class="filter-chip active" id="filter-todos" onclick="setFilter('todos')">Todos</div>
-        <div class="filter-chip" id="filter-sin" onclick="setFilter('sin')">Sin asignar</div>
-        <div class="filter-chip" id="filter-mios" onclick="setFilter('mios')">Mis asignados</div>
+        <div class="filter-chip" id="filter-sin" onclick="setFilter('sin')">⚠️ Sin asignar</div>
       </div>
+      <!-- Filtros por agente (solo admin) -->
+      <div class="admin-filters" id="agent-filters" style="display:none;border-top:none;padding-top:0"></div>
 
       <!-- Chats list -->
       <div id="chats-view" style="display:flex;flex-direction:column;flex:1;min-height:0;overflow:hidden">
@@ -399,7 +400,9 @@ function initApp() {
     document.getElementById('admin-badge').style.display = 'inline-flex';
     document.getElementById('admin-stats').style.display = 'flex';
     document.getElementById('admin-filters').style.display = 'flex';
+    document.getElementById('agent-filters').style.display = 'flex';
     document.getElementById('assign-bar').style.display = 'flex';
+    buildAgentFilters();
 
     // Llenar selector de asignación (solo admin lo ve)
     const sel = document.getElementById('assign-select');
@@ -498,25 +501,52 @@ function updateChatAgentLabel(chatId) {
 }
 
 // ── Filtros (admin) ───────────────────────────────────────────────────────────
+let activeAgentFilter = 0; // 0 = todos los agentes
+
 function setFilter(f) {
   activeFilter = f;
-  ['todos','sin','mios'].forEach(id => {
-    document.getElementById('filter-' + id).classList.toggle('active', id === f);
+  ['todos','sin'].forEach(id => {
+    const el = document.getElementById('filter-' + id);
+    if (el) el.classList.toggle('active', id === f);
   });
   renderChats(getFilteredChats());
 }
 
+function setAgentFilter(agentId) {
+  activeAgentFilter = agentId;
+  // Resaltar chip activo
+  document.querySelectorAll('#agent-filters .filter-chip').forEach(el => {
+    el.classList.remove('active');
+  });
+  const active = document.getElementById('agent-filter-' + agentId);
+  if (active) active.classList.add('active');
+  renderChats(getFilteredChats());
+}
+
+function buildAgentFilters() {
+  const container = document.getElementById('agent-filters');
+  if (!container) return;
+  let html = '<div class="filter-chip active" id="agent-filter-0" onclick="setAgentFilter(0)">👥 Todos</div>';
+  AGENTS.filter(a => !a.isAdmin).forEach(a => {
+    html += '<div class="filter-chip" id="agent-filter-' + a.id + '" onclick="setAgentFilter(' + a.id + ')" style="border-color:' + a.color + '20;color:' + a.color + '">● ' + a.name + '</div>';
+  });
+  container.innerHTML = html;
+}
+
 function getFilteredChats() {
   if (!isAdmin()) {
-    // Agente: ve TODOS los chats (puede leer cualquiera, solo escribe en los suyos)
     return allChats;
   }
-  // Admin: aplica filtro seleccionado
+  // Admin: filtro de estado
+  let chats = allChats;
   switch(activeFilter) {
-    case 'sin':  return allChats.filter(c => !chatAssignments[c.id]);
-    case 'mios': return allChats.filter(c => chatAssignments[c.id]);
-    default:     return allChats;
+    case 'sin': chats = chats.filter(c => !chatAssignments[c.id]); break;
   }
+  // Filtro por agente específico
+  if (activeAgentFilter > 0) {
+    chats = chats.filter(c => chatAssignments[c.id] && chatAssignments[c.id].agent_id === activeAgentFilter);
+  }
+  return chats;
 }
 
 // ── Tabs ──────────────────────────────────────────────────────────────────────
