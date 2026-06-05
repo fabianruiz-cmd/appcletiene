@@ -398,8 +398,8 @@ async function assignChat() {
     chatAssignments[currentChatId] = { agent_id: agent.id, agent_name: agent.name, agent_color: agent.color };
     updateChatAgentLabel(currentChatId);
     renderChats(allChats);
-    // Habilitar input al asignar
-    enableChatInput(true);
+    // Verificar acceso al asignar
+    checkChatAccess(currentChatId);
   } catch(e) { alert('Error al asignar'); }
 }
 
@@ -506,8 +506,8 @@ async function openChat(chatId, name) {
   view.style.display = 'flex';
   updateChatAgentLabel(chatId);
   renderChats(allChats);
-  // Habilitar input solo si tiene agente asignado
-  enableChatInput(!!chatAssignments[chatId]);
+  // Verificar acceso según agente asignado
+  checkChatAccess(chatId);
   // Preseleccionar agente si ya tiene uno
   const currAssign = chatAssignments[chatId];
   const sel = document.getElementById('assign-select');
@@ -597,7 +597,7 @@ function cerrarSesion() {
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
-function enableChatInput(enabled) {
+function enableChatInput(enabled, reason) {
   const input = document.getElementById('msg-input');
   const btn   = document.getElementById('btn-send');
   input.disabled = !enabled;
@@ -605,7 +605,29 @@ function enableChatInput(enabled) {
   input.style.opacity = enabled ? '1' : '.5';
   input.style.cursor  = enabled ? 'text' : 'not-allowed';
   btn.style.opacity   = enabled ? '1' : '.4';
-  input.placeholder   = enabled ? 'Escribe un mensaje...' : '⚠️ Asigna un agente para habilitar el chat...';
+  if (!enabled && reason === 'other-agent') {
+    const assign = chatAssignments[currentChatId];
+    input.placeholder = '🔒 Este chat está siendo atendido por ' + (assign ? assign.agent_name : 'otro agente');
+  } else if (!enabled) {
+    input.placeholder = '⚠️ Asigna un agente para habilitar el chat...';
+  } else {
+    input.placeholder = 'Escribe un mensaje...';
+  }
+}
+
+function checkChatAccess(chatId) {
+  const assign = chatAssignments[chatId];
+  if (!assign) {
+    // Sin asignar — solo admin puede escribir
+    const isAdmin = currentAgent.id === 0;
+    enableChatInput(isAdmin, 'unassigned');
+  } else if (assign.agent_id === currentAgent.id || currentAgent.id === 0) {
+    // Es el agente asignado o admin
+    enableChatInput(true);
+  } else {
+    // Otro agente — solo lectura
+    enableChatInput(false, 'other-agent');
+  }
 }
 
 function formatPhone(id) { return '+' + String(id).replace('@s.whatsapp.net','').replace('@g.us',''); }
