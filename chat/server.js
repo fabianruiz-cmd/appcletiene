@@ -1,813 +1,108 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-  <meta charset="UTF-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>CL TIENE — Chat</title>
-  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet"/>
-  <style>
-    :root {
-      --bg: #0a0d12; --surface: #111520; --surface2: #161c28;
-      --border: #1e2535; --primary: #0d7a5f; --primary-light: rgba(13,122,95,.15);
-      --wa: #25d366; --text: #e8eaf2; --muted: #5a6580; --muted2: #8090b0;
-      --incoming: #1a2235; --outgoing: #0d4a39;
-    }
-    body.light-mode {
-      --bg: #f0f2f5; --surface: #ffffff; --surface2: #f8fafc;
-      --border: #dde1ea; --text: #1a202c; --muted: #64748b; --muted2: #94a3b8;
-      --incoming: #ffffff; --outgoing: #d1fae5;
-    }
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-    html, body { height: 100%; overflow: hidden; font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--text); }
+require('dotenv').config();
+const express = require('express');
+const path    = require('path');
+const app     = express();
+const PORT    = process.env.PORT || 8080;
 
-    /* ── Login ── */
-    #login-screen {
-      position: fixed; inset: 0; z-index: 9999;
-      background: var(--bg); display: flex; align-items: center; justify-content: center;
-    }
-    .login-card {
-      background: var(--surface); border: 1px solid var(--border);
-      border-radius: 20px; padding: 36px 32px; width: 100%; max-width: 380px; text-align: center;
-    }
-    .login-logo { height: 48px; object-fit: contain; margin-bottom: 16px; }
-    .login-title { font-size: 20px; font-weight: 700; margin-bottom: 4px; }
-    .login-sub { font-size: 13px; color: var(--muted); margin-bottom: 24px; }
-    .login-field { margin-bottom: 14px; text-align: left; }
-    .login-field label { display: block; font-size: 11px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; margin-bottom: 6px; }
-    .login-field input {
-      width: 100%; background: var(--bg); border: 1.5px solid var(--border);
-      border-radius: 10px; padding: 11px 14px; color: var(--text);
-      font-family: 'DM Sans', sans-serif; font-size: 14px; outline: none; transition: border-color .15s;
-    }
-    .login-field input:focus { border-color: var(--primary); }
-    .login-btn {
-      width: 100%; padding: 12px; border-radius: 10px; border: none;
-      background: var(--primary); color: #fff; font-family: 'DM Sans', sans-serif;
-      font-size: 14px; font-weight: 600; cursor: pointer; margin-top: 4px;
-    }
-    .login-btn:hover { background: #0a6650; }
-    .login-err { color: #f87171; font-size: 12px; margin-top: 10px; display: none; }
-    .login-err.show { display: block; }
+const WA_URL   = process.env.WHAPI_URL   || 'https://gate.whapi.cloud';
+const WA_TOKEN = process.env.WHAPI_TOKEN || 'WwW3UAz2x6iJ0nasEd7ar5WFoVsxnGpc';
+const SB_URL   = process.env.SUPABASE_URL || '';
+const SB_KEY   = process.env.SUPABASE_ANON_KEY || '';
 
-    /* ── App ── */
-    #app { display: flex; flex-direction: column; height: 100%; }
+app.use(express.json());
 
-    .topbar {
-      display: flex; align-items: center; justify-content: space-between;
-      padding: 10px 20px; background: var(--surface); border-bottom: 1px solid var(--border); flex-shrink: 0;
-    }
-    .topbar-left { display: flex; align-items: center; gap: 12px; }
-    .topbar-logo { height: 34px; object-fit: contain; }
-    .topbar-badge { background: var(--wa); color: #fff; font-size: 10px; font-weight: 600; padding: 2px 8px; border-radius: 20px; }
-    /* Badge especial para admin */
-    .admin-badge {
-      background: linear-gradient(135deg, #f59e0b, #d97706);
-      color: #fff; font-size: 10px; font-weight: 700;
-      padding: 2px 8px; border-radius: 20px; letter-spacing: .5px;
-    }
-    .agent-pill {
-      display: flex; align-items: center; gap: 6px;
-      padding: 4px 10px; border-radius: 20px; font-size: 12px; font-weight: 600;
-    }
-    .agent-dot { width: 8px; height: 8px; border-radius: 50%; }
-    .topbar-right { display: flex; gap: 8px; }
-    .btn-icon {
-      width: 34px; height: 34px; border-radius: 8px;
-      background: var(--surface2); border: 1px solid var(--border);
-      color: var(--muted2); cursor: pointer; display: flex; align-items: center; justify-content: center;
-      font-size: 15px; transition: all .15s; text-decoration: none;
-    }
-    .btn-icon:hover { color: var(--text); border-color: var(--primary); }
+// ── HTML ──────────────────────────────────────────────────────────────────────
+app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'chat.html')));
 
-    .layout { display: flex; flex: 1; overflow: hidden; }
-
-    /* Chats panel */
-    .chats-panel { width: 300px; flex-shrink: 0; border-right: 1px solid var(--border); display: flex; flex-direction: column; background: var(--surface); min-height: 0; overflow: hidden; }
-    .panel-tabs { display: flex; border-bottom: 1px solid var(--border); }
-    .panel-tab { flex: 1; padding: 10px; text-align: center; font-size: 12px; font-weight: 600; color: var(--muted); cursor: pointer; border-bottom: 2px solid transparent; transition: all .15s; }
-    .panel-tab.active { color: var(--primary); border-bottom-color: var(--primary); }
-    .chats-search { padding: 10px 12px; border-bottom: 1px solid var(--border); }
-    .chats-search input {
-      width: 100%; background: var(--bg); border: 1px solid var(--border);
-      border-radius: 8px; padding: 7px 12px; color: var(--text);
-      font-family: 'DM Sans', sans-serif; font-size: 13px; outline: none;
-    }
-    .chats-search input:focus { border-color: var(--primary); }
-    .chats-list { flex: 1; overflow-y: auto; overflow-x: hidden; scrollbar-width: thin; scrollbar-color: var(--border) transparent; min-height: 0; }
-    .chat-item {
-      display: flex; align-items: center; gap: 10px;
-      padding: 11px 14px; cursor: pointer; border-bottom: 1px solid var(--border); transition: background .1s;
-    }
-    .chat-item:hover { background: var(--surface2); }
-    .chat-item.active { background: var(--primary-light); border-left: 3px solid var(--primary); }
-    .chat-avatar {
-      width: 40px; height: 40px; border-radius: 50%;
-      background: var(--surface2); border: 1px solid var(--border);
-      display: flex; align-items: center; justify-content: center;
-      font-size: 16px; font-weight: 600; color: var(--primary); flex-shrink: 0;
-    }
-    .chat-info { flex: 1; min-width: 0; }
-    .chat-name { font-size: 13px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .chat-preview { font-size: 11px; color: var(--muted2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 2px; }
-    .chat-agent-tag { font-size: 10px; font-weight: 600; padding: 1px 6px; border-radius: 10px; margin-top: 3px; display: inline-block; }
-    .chat-unassigned-tag { font-size: 10px; font-weight: 600; padding: 1px 6px; border-radius: 10px; margin-top: 3px; display: inline-block; background: rgba(245,158,11,.15); color: #f59e0b; }
-    .chat-meta { display: flex; flex-direction: column; align-items: flex-end; gap: 3px; flex-shrink: 0; }
-    .chat-time { font-size: 10px; color: var(--muted); }
-    .chat-unread { background: var(--wa); color: #fff; font-size: 10px; font-weight: 700; width: 18px; height: 18px; border-radius: 50%; display: flex; align-items: center; justify-content: center; }
-
-    /* Filtros admin */
-    .admin-filters { padding: 8px 12px; border-bottom: 1px solid var(--border); display: flex; gap: 6px; flex-wrap: wrap; }
-    .filter-chip {
-      padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 600;
-      border: 1px solid var(--border); cursor: pointer; background: var(--surface2);
-      color: var(--muted2); transition: all .15s;
-    }
-    .filter-chip.active { background: var(--primary-light); color: var(--primary); border-color: var(--primary); }
-
-    /* Stats admin */
-    .admin-stats {
-      padding: 10px 12px; border-bottom: 1px solid var(--border);
-      display: flex; gap: 8px;
-    }
-    .stat-box {
-      flex: 1; background: var(--surface2); border: 1px solid var(--border);
-      border-radius: 8px; padding: 6px 8px; text-align: center;
-    }
-    .stat-num { font-size: 16px; font-weight: 700; color: var(--primary); }
-    .stat-label { font-size: 10px; color: var(--muted); margin-top: 1px; }
-
-    /* Log panel */
-    #log-panel { flex: 1; overflow-y: auto; padding: 16px; display: none; }
-    #log-panel.active { display: block; }
-
-    /* Messages */
-    .messages-panel { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
-    .msg-header {
-      display: flex; align-items: center; gap: 10px;
-      padding: 10px 16px; background: var(--surface); border-bottom: 1px solid var(--border); flex-shrink: 0;
-    }
-    .msg-header-avatar { width: 36px; height: 36px; border-radius: 50%; background: var(--surface2); border: 1px solid var(--border); display: flex; align-items: center; justify-content: center; font-size: 15px; font-weight: 600; color: var(--primary); }
-    .msg-header-info { flex: 1; }
-    .msg-header-name { font-size: 14px; font-weight: 600; }
-    .msg-header-phone { font-size: 11px; color: var(--muted2); font-family: 'DM Mono', monospace; }
-    .msg-header-agent { font-size: 11px; font-weight: 600; margin-top: 1px; }
-
-    /* Assign bar — solo admin */
-    .assign-bar {
-      padding: 8px 16px; background: var(--surface2); border-bottom: 1px solid var(--border);
-      display: flex; align-items: center; gap: 10px; flex-shrink: 0;
-    }
-    .assign-bar label { font-size: 12px; color: var(--muted); flex-shrink: 0; }
-    .assign-bar select {
-      flex: 1; background: var(--bg); border: 1px solid var(--border);
-      border-radius: 8px; padding: 6px 10px; color: var(--text);
-      font-family: 'DM Sans', sans-serif; font-size: 12px; outline: none; cursor: pointer;
-    }
-    .assign-btn {
-      padding: 6px 14px; border-radius: 8px; border: none;
-      background: var(--primary); color: #fff; font-size: 12px; font-weight: 600; cursor: pointer;
-    }
-    .assign-btn:hover { background: #0a6650; }
-    /* Reasignar — color naranja para admin */
-    .reassign-btn {
-      padding: 6px 14px; border-radius: 8px; border: none;
-      background: #f59e0b; color: #fff; font-size: 12px; font-weight: 600; cursor: pointer;
-    }
-    .reassign-btn:hover { background: #d97706; }
-
-    .msg-list { flex: 1; overflow-y: auto; padding: 14px 16px; display: flex; flex-direction: column; gap: 3px; scrollbar-width: thin; scrollbar-color: var(--border) transparent; }
-    .msg-bubble { max-width: 65%; padding: 8px 12px; border-radius: 12px; font-size: 13px; line-height: 1.5; }
-    .msg-bubble.incoming { background: var(--incoming); color: var(--text); border-radius: 4px 12px 12px 12px; align-self: flex-start; }
-    .msg-bubble.outgoing { background: var(--outgoing); color: var(--text); border-radius: 12px 4px 12px 12px; align-self: flex-end; }
-    body.light-mode .msg-bubble.incoming { color: #1a202c; }
-    body.light-mode .msg-bubble.outgoing { color: #065f46; }
-    .msg-time { font-size: 10px; color: var(--muted); margin-top: 3px; text-align: right; }
-    .msg-date-divider { text-align: center; font-size: 11px; color: var(--muted); padding: 8px 0; }
-
-    .msg-input-bar { padding: 10px 16px; background: var(--surface); border-top: 1px solid var(--border); display: flex; gap: 8px; align-items: flex-end; flex-shrink: 0; }
-    .msg-input-bar textarea {
-      flex: 1; background: var(--bg); border: 1px solid var(--border); border-radius: 10px;
-      padding: 9px 12px; color: var(--text); font-family: 'DM Sans', sans-serif;
-      font-size: 13px; resize: none; outline: none; max-height: 100px; min-height: 38px; line-height: 1.5;
-    }
-    .msg-input-bar textarea:focus { border-color: var(--primary); }
-    .btn-send { width: 38px; height: 38px; border-radius: 8px; background: var(--primary); border: none; color: #fff; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 16px; flex-shrink: 0; }
-    .btn-send:hover { background: #0a6650; }
-    .btn-send:disabled { opacity: .4; }
-
-    /* Banner info agente (lectura) */
-    .agent-readonly-banner {
-      padding: 8px 16px; background: rgba(245,158,11,.1); border-bottom: 1px solid rgba(245,158,11,.3);
-      font-size: 12px; color: #f59e0b; display: none; align-items: center; gap: 6px; flex-shrink: 0;
-    }
-    .agent-readonly-banner.show { display: flex; }
-
-    .no-chat { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; color: var(--muted); }
-    .no-chat-icon { font-size: 56px; opacity: .3; }
-    .loader { width: 20px; height: 20px; border: 2px solid var(--border); border-top-color: var(--primary); border-radius: 50%; animation: spin .6s linear infinite; margin: 24px auto; }
-    @keyframes spin { to { transform: rotate(360deg); } }
-
-    @media (max-width: 600px) {
-      .chats-panel { width: 100%; }
-      .messages-panel { display: none; }
-      .messages-panel.active { display: flex; }
-      .chats-panel.hidden { display: none; }
-      .msg-header-back { display: flex !important; }
-    }
-    .msg-header-back { display: none; width: 30px; height: 30px; border-radius: 8px; background: var(--surface2); border: 1px solid var(--border); color: var(--muted2); cursor: pointer; align-items: center; justify-content: center; font-size: 18px; }
-  </style>
-</head>
-<body>
-
-<!-- Login -->
-<div id="login-screen">
-  <div class="login-card">
-    <img class="login-logo"
-         src="https://cltiene.com/wp-content/uploads/2026/01/e0280ba2b169453b2ae09ecf07c2b8d01673e12b.png"
-         alt="CL TIENE" onerror="this.style.display='none'"/>
-    <div class="login-title">CL TIENE Chat</div>
-    <div class="login-sub">Acceso solo para agentes autorizados</div>
-    <div class="login-field">
-      <label>Usuario</label>
-      <input type="email" id="login-user" placeholder="agente@cltiene.com" onkeydown="if(event.key==='Enter')doLogin()"/>
-    </div>
-    <div class="login-field">
-      <label>Contraseña</label>
-      <input type="password" id="login-pass" placeholder="••••••••" onkeydown="if(event.key==='Enter')doLogin()"/>
-    </div>
-    <button class="login-btn" onclick="doLogin()">Ingresar →</button>
-    <div class="login-err" id="login-err">Usuario o contraseña incorrectos</div>
-  </div>
-</div>
-
-<!-- App -->
-<div id="app">
-  <div class="topbar">
-    <div class="topbar-left">
-      <img class="topbar-logo" id="topbar-logo"
-           src="https://cltiene.com/wp-content/uploads/2026/01/e0280ba2b169453b2ae09ecf07c2b8d01673e12b.png"
-           alt="CL TIENE" onerror="this.style.display='none'"/>
-      <span class="topbar-badge">WhatsApp</span>
-      <!-- Badge admin separado -->
-      <span class="admin-badge" id="admin-badge" style="display:none">⚡ ADMIN</span>
-      <div class="agent-pill" id="agent-pill" style="display:none">
-        <div class="agent-dot" id="agent-dot"></div>
-        <span id="agent-label"></span>
-      </div>
-    </div>
-    <div class="topbar-right">
-      <div class="btn-icon" id="btn-refresh" onclick="loadChats()" title="Actualizar">↻</div>
-      <div class="btn-icon" id="btn-modo" onclick="toggleModo()" title="Modo">🌙</div>
-      <div class="btn-icon" onclick="cerrarSesion()" title="Cerrar sesión" style="color:#f87171">⏻</div>
-    </div>
-  </div>
-
-  <div class="layout">
-    <div class="chats-panel" id="chats-panel">
-      <div class="panel-tabs">
-        <div class="panel-tab active" id="tab-chats" onclick="switchTab('chats')">💬 Chats</div>
-        <div class="panel-tab" id="tab-log" onclick="switchTab('log')">📋 Log</div>
-      </div>
-
-      <!-- Stats (solo admin) -->
-      <div class="admin-stats" id="admin-stats" style="display:none">
-        <div class="stat-box">
-          <div class="stat-num" id="stat-total">0</div>
-          <div class="stat-label">Total</div>
-        </div>
-        <div class="stat-box">
-          <div class="stat-num" id="stat-asignados" style="color:#25d366">0</div>
-          <div class="stat-label">Asignados</div>
-        </div>
-        <div class="stat-box">
-          <div class="stat-num" id="stat-sin" style="color:#f59e0b">0</div>
-          <div class="stat-label">Sin agente</div>
-        </div>
-      </div>
-
-      <!-- Filtros (solo admin) -->
-      <div class="admin-filters" id="admin-filters" style="display:none">
-        <div class="filter-chip active" id="filter-todos" onclick="setFilter('todos')">Todos</div>
-        <div class="filter-chip" id="filter-sin" onclick="setFilter('sin')">Sin asignar</div>
-        <div class="filter-chip" id="filter-mios" onclick="setFilter('mios')">Mis asignados</div>
-      </div>
-
-      <!-- Chats list -->
-      <div id="chats-view" style="display:flex;flex-direction:column;flex:1;min-height:0;overflow:hidden">
-        <div class="chats-search">
-          <input type="text" id="search-input" placeholder="Buscar..." oninput="filterChats()"/>
-        </div>
-        <div class="chats-list" id="chats-list">
-          <div class="loader"></div>
-        </div>
-      </div>
-
-      <!-- Log view -->
-      <div id="log-view" style="display:none;flex:1;overflow-y:auto;padding:12px">
-        <div id="log-list"><div class="loader"></div></div>
-      </div>
-    </div>
-
-    <div class="messages-panel" id="messages-panel">
-      <div class="no-chat" id="no-chat">
-        <div class="no-chat-icon">💬</div>
-        <p>Selecciona un chat</p>
-      </div>
-      <div id="chat-view" style="display:none;flex-direction:column;height:100%">
-        <div class="msg-header">
-          <button class="msg-header-back" id="btn-back" onclick="backToChats()">‹</button>
-          <div class="msg-header-avatar" id="chat-avatar">?</div>
-          <div class="msg-header-info">
-            <div class="msg-header-name" id="chat-name">—</div>
-            <div class="msg-header-phone" id="chat-phone">—</div>
-            <div class="msg-header-agent" id="chat-agent-label"></div>
-          </div>
-          <div class="btn-icon" onclick="loadMessages(currentChatId)" title="Actualizar">↻</div>
-        </div>
-
-        <!-- Assign bar: SOLO admin -->
-        <div class="assign-bar" id="assign-bar" style="display:none">
-          <label>Asignar a:</label>
-          <select id="assign-select"></select>
-          <button class="assign-btn" onclick="assignChat()">Asignar</button>
-          <button class="reassign-btn" onclick="assignChat()" title="Reasignar">⟳</button>
-        </div>
-
-        <!-- Banner lectura para agentes sin acceso -->
-        <div class="agent-readonly-banner" id="readonly-banner">
-          🔒 <span id="readonly-msg">Solo lectura</span>
-        </div>
-
-        <div class="msg-list" id="msg-list"></div>
-        <div class="msg-input-bar">
-          <textarea id="msg-input" placeholder="⚠️ Asigna un agente para habilitar el chat..." rows="1"
-            disabled style="opacity:.5;cursor:not-allowed;"
-            onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendMessage();}"
-            oninput="this.style.height='auto';this.style.height=Math.min(this.scrollHeight,100)+'px'"></textarea>
-          <button class="btn-send" id="btn-send" onclick="sendMessage()" disabled style="opacity:.4">➤</button>
-        </div>
-      </div>
-    </div>
-  </div>
-</div>
-
-<script>
-// ── Agentes ───────────────────────────────────────────────────────────────────
-const AGENTS = [
-  { id:1, name:'Agente 1', user:'agente1@cltiene.com', pass:'Kx9mP#2vLq', color:'#3b82f6', isAdmin:false },
-  { id:2, name:'Agente 2', user:'agente2@cltiene.com', pass:'Rn4jT#8wZe', color:'#f59e0b', isAdmin:false },
-  { id:3, name:'Agente 3', user:'agente3@cltiene.com', pass:'Hy6cQ#5bNs', color:'#8b5cf6', isAdmin:false },
-  { id:4, name:'Agente 4', user:'agente4@cltiene.com', pass:'Wf3dM#7uYt', color:'#ec4899', isAdmin:false },
-  { id:5, name:'Agente 5', user:'agente5@cltiene.com', pass:'Gp8kV#1xAo', color:'#0d7a5f', isAdmin:false },
-  { id:0, name:'Admin',    user:'chat@cltiene.com',    pass:'hW7PDK8rXC', color:'#f59e0b', isAdmin:true  },
-];
-
-let currentAgent = null;
-let allChats = [];
-let currentChatId = null;
-let chatAssignments = {};
-let activeFilter = 'todos'; // solo admin usa esto
-
-function isAdmin() { return currentAgent && currentAgent.isAdmin; }
-
-// ── Login ─────────────────────────────────────────────────────────────────────
-function doLogin() {
-  const user = document.getElementById('login-user').value.trim().toLowerCase();
-  const pass = document.getElementById('login-pass').value;
-  const agent = AGENTS.find(a => a.user === user && a.pass === pass);
-  if (agent) {
-    currentAgent = agent;
-    sessionStorage.setItem('chat-agent', JSON.stringify(agent));
-    document.getElementById('login-screen').style.display = 'none';
-    initApp();
-  } else {
-    document.getElementById('login-err').classList.add('show');
-    document.getElementById('login-pass').value = '';
-  }
+// ── WhatsApp ──────────────────────────────────────────────────────────────────
+async function waFetch(endpoint, method, body) {
+  const nodeFetch = (await import('node-fetch')).default;
+  const opts = { method: method || 'GET', headers: { 'Authorization': 'Bearer ' + WA_TOKEN, 'Content-Type': 'application/json' } };
+  if (body) opts.body = JSON.stringify(body);
+  const res = await nodeFetch(WA_URL + endpoint, opts);
+  return { ok: res.ok, data: await res.json().catch(() => ({})) };
 }
 
-function initApp() {
-  // Topbar: agente o admin
-  const pill = document.getElementById('agent-pill');
-  pill.style.display = 'flex';
-  pill.style.background = currentAgent.color + '20';
-  pill.style.color = currentAgent.color;
-  document.getElementById('agent-dot').style.background = currentAgent.color;
-  document.getElementById('agent-label').textContent = currentAgent.name;
+app.get('/api/chats', async (req, res) => {
+  try {
+    const r = await waFetch('/chats?count=' + (req.query.count || 50));
+    res.json({ ok: true, chats: r.data.chats || r.data || [] });
+  } catch(e) { res.json({ ok: false, error: e.message, chats: [] }); }
+});
 
-  if (isAdmin()) {
-    document.getElementById('admin-badge').style.display = 'inline-flex';
-    document.getElementById('admin-stats').style.display = 'flex';
-    document.getElementById('admin-filters').style.display = 'flex';
-    document.getElementById('assign-bar').style.display = 'flex';
+app.get('/api/messages/:chatId', async (req, res) => {
+  try {
+    const r = await waFetch('/messages/list/' + encodeURIComponent(req.params.chatId) + '?count=50');
+    const msgs = r.data.messages || [];
+    msgs.sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0));
+    res.json({ ok: true, messages: msgs });
+  } catch(e) { res.json({ ok: false, error: e.message, messages: [] }); }
+});
 
-    // Llenar selector de asignación (solo admin lo ve)
-    const sel = document.getElementById('assign-select');
-    sel.innerHTML = '<option value="">— Seleccionar agente —</option>';
-    AGENTS.filter(a => !a.isAdmin).forEach(a => {
-      sel.innerHTML += '<option value="' + a.id + '">' + a.name + '</option>';
-    });
-  }
+app.post('/api/send', async (req, res) => {
+  const { to, message } = req.body;
+  if (!to || !message) return res.status(400).json({ ok: false, error: 'to y message requeridos' });
+  try {
+    let num = to.replace('@s.whatsapp.net','').replace(/[\s\-\+\(\)]/g,'');
+    if (num.length === 10) num = '57' + num;
+    if (!num.startsWith('57')) num = '57' + num;
+    const r = await waFetch('/messages/text', 'POST', { to: num + '@s.whatsapp.net', body: message });
+    res.json({ ok: r.ok, data: r.data });
+  } catch(e) { res.json({ ok: false, error: e.message }); }
+});
 
-  loadAssignments();
-  loadChats();
-  setInterval(function() { loadChats(); }, 30000);
-}
-
-// Sesión guardada
-(function() {
-  const saved = sessionStorage.getItem('chat-agent');
-  if (saved) {
-    try {
-      currentAgent = JSON.parse(saved);
-      document.getElementById('login-screen').style.display = 'none';
-      initApp();
-    } catch(e) {}
-  }
-})();
-
-// ── Supabase helpers ──────────────────────────────────────────────────────────
-async function sbFetch(endpoint, method, body) {
-  const res = await fetch('/api/sb' + endpoint, {
+// ── Supabase ──────────────────────────────────────────────────────────────────
+async function sbReq(endpoint, method, body) {
+  if (!SB_URL || !SB_KEY) return { ok: false, error: 'Supabase no configurado' };
+  const nodeFetch = (await import('node-fetch')).default;
+  const opts = {
     method: method || 'GET',
-    headers: { 'Content-Type': 'application/json' },
-    body: body ? JSON.stringify(body) : undefined
-  });
-  return res.json();
+    headers: { 'apikey': SB_KEY, 'Authorization': 'Bearer ' + SB_KEY, 'Content-Type': 'application/json', 'Prefer': 'return=representation' }
+  };
+  if (body) opts.body = JSON.stringify(body);
+  const res = await nodeFetch(SB_URL + '/rest/v1' + endpoint, opts);
+  const data = await res.json().catch(() => []);
+  return { ok: res.ok, rows: Array.isArray(data) ? data : [data] };
 }
 
-async function loadAssignments() {
+// Assignments
+app.get('/api/sb/assignments', async (req, res) => {
+  try { res.json(await sbReq('/chat_assignments?select=*&order=updated_at.desc')); }
+  catch(e) { res.json({ ok: false, error: e.message }); }
+});
+
+app.post('/api/sb/assignments', async (req, res) => {
   try {
-    const data = await sbFetch('/assignments');
-    if (data.ok && data.rows) {
-      chatAssignments = {};
-      data.rows.forEach(r => { chatAssignments[r.chat_id] = r; });
-      if (isAdmin()) updateAdminStats();
-    }
-  } catch(e) {}
-}
-
-function updateAdminStats() {
-  const total = allChats.length;
-  const asignados = allChats.filter(c => chatAssignments[c.id]).length;
-  document.getElementById('stat-total').textContent = total;
-  document.getElementById('stat-asignados').textContent = asignados;
-  document.getElementById('stat-sin').textContent = total - asignados;
-}
-
-async function assignChat() {
-  if (!currentChatId || !isAdmin()) return;
-  const agentId = parseInt(document.getElementById('assign-select').value);
-  const agent = AGENTS.find(a => a.id === agentId);
-  if (!agent) return;
-
-  try {
-    await sbFetch('/assignments', 'POST', {
-      chat_id: currentChatId,
-      agent_id: agent.id,
-      agent_name: agent.name,
-      agent_color: agent.color,
-      chat_name: document.getElementById('chat-name').textContent
+    const { chat_id, agent_id, agent_name, agent_color, chat_name } = req.body;
+    const r = await sbReq('/chat_assignments', 'POST', {
+      chat_id, agent_id, agent_name, agent_color,
+      updated_at: new Date().toISOString()
     });
-    await sbFetch('/log', 'POST', {
-      chat_id: currentChatId,
-      chat_name: document.getElementById('chat-name').textContent,
-      agent_id: currentAgent.id,
-      agent_name: currentAgent.name,
-      action: 'Asignó a ' + agent.name
-    });
-
-    chatAssignments[currentChatId] = { agent_id: agent.id, agent_name: agent.name, agent_color: agent.color };
-    updateChatAgentLabel(currentChatId);
-    updateAdminStats();
-    renderChats(getFilteredChats());
-    checkChatAccess(currentChatId);
-  } catch(e) { alert('Error al asignar'); }
-}
-
-function updateChatAgentLabel(chatId) {
-  const a = chatAssignments[chatId];
-  const el = document.getElementById('chat-agent-label');
-  if (a && el) {
-    el.textContent = '👤 ' + a.agent_name;
-    el.style.color = a.agent_color;
-  } else if (el) {
-    el.textContent = isAdmin() ? '⚠️ Sin asignar' : '';
-    el.style.color = '#f59e0b';
-  }
-}
-
-// ── Filtros (admin) ───────────────────────────────────────────────────────────
-function setFilter(f) {
-  activeFilter = f;
-  ['todos','sin','mios'].forEach(id => {
-    document.getElementById('filter-' + id).classList.toggle('active', id === f);
-  });
-  renderChats(getFilteredChats());
-}
-
-function getFilteredChats() {
-  if (!isAdmin()) {
-    // Agente: solo ve sus chats asignados
-    return allChats.filter(c => {
-      const a = chatAssignments[c.id];
-      return a && a.agent_id === currentAgent.id;
-    });
-  }
-  // Admin: aplica filtro seleccionado
-  switch(activeFilter) {
-    case 'sin':  return allChats.filter(c => !chatAssignments[c.id]);
-    case 'mios': return allChats.filter(c => chatAssignments[c.id]); // admin ve todos los asignados
-    default:     return allChats;
-  }
-}
-
-// ── Tabs ──────────────────────────────────────────────────────────────────────
-function switchTab(tab) {
-  document.getElementById('tab-chats').classList.toggle('active', tab === 'chats');
-  document.getElementById('tab-log').classList.toggle('active', tab === 'log');
-  document.getElementById('chats-view').style.display = tab === 'chats' ? 'flex' : 'none';
-  document.getElementById('chats-view').style.flexDirection = 'column';
-  document.getElementById('log-view').style.display = tab === 'log' ? 'block' : 'none';
-  if (tab === 'log') loadLog();
-}
-
-async function loadLog() {
-  const list = document.getElementById('log-list');
-  list.innerHTML = '<div class="loader"></div>';
-  try {
-    const data = await sbFetch('/log');
-    if (!data.ok || !data.rows.length) {
-      list.innerHTML = '<p style="text-align:center;color:var(--muted);font-size:13px;padding:24px">Sin registros aún</p>';
-      return;
+    // Upsert si ya existe
+    if (!r.ok) {
+      const r2 = await sbReq('/chat_assignments?chat_id=eq.' + encodeURIComponent(chat_id), 'PATCH', {
+        agent_id, agent_name, agent_color, updated_at: new Date().toISOString()
+      });
+      return res.json(r2);
     }
+    res.json(r);
+  } catch(e) { res.json({ ok: false, error: e.message }); }
+});
 
-    // Admin ve todo, agente filtra solo su historial
-    const rows = isAdmin()
-      ? data.rows
-      : data.rows.filter(r => r.agent_id === currentAgent.id);
+// Log
+app.get('/api/sb/log', async (req, res) => {
+  try { res.json(await sbReq('/chat_log?select=*&order=created_at.desc&limit=100')); }
+  catch(e) { res.json({ ok: false, error: e.message }); }
+});
 
-    if (!rows.length) {
-      list.innerHTML = '<p style="text-align:center;color:var(--muted);font-size:13px;padding:24px">Sin actividad tuya aún</p>';
-      return;
-    }
-
-    list.innerHTML = rows.map(r => {
-      const agent = AGENTS.find(a => a.id === r.agent_id);
-      const color = agent ? agent.color : '#64748b';
-      const time = new Date(r.created_at).toLocaleString('es-CO', { dateStyle:'short', timeStyle:'short' });
-      return '<div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:10px 12px;margin-bottom:8px;font-size:12px">'
-        + '<div style="display:flex;justify-content:space-between;margin-bottom:4px">'
-        + '<span style="font-weight:600;color:' + color + '">' + r.agent_name + '</span>'
-        + '<span style="color:var(--muted);font-family:DM Mono,monospace">' + time + '</span>'
-        + '</div>'
-        + '<div style="color:var(--muted2)">' + r.action + ' — <strong>' + (r.chat_name || r.chat_id) + '</strong></div>'
-        + '</div>';
-    }).join('');
-  } catch(e) {
-    list.innerHTML = '<p style="color:var(--muted);padding:16px">Error al cargar log</p>';
-  }
-}
-
-// ── Chats ─────────────────────────────────────────────────────────────────────
-async function loadChats() {
-  const btn = document.getElementById('btn-refresh');
-  btn.style.animation = 'spin .8s linear infinite';
+app.post('/api/sb/log', async (req, res) => {
   try {
-    const res = await fetch('/api/chats');
-    const data = await res.json();
-    allChats = data.chats || [];
-    await loadAssignments();
-    renderChats(getFilteredChats());
-  } catch(e) {
-    document.getElementById('chats-list').innerHTML = '<p style="padding:16px;color:var(--muted);font-size:13px;text-align:center">Error al cargar chats</p>';
-  } finally {
-    btn.style.animation = '';
-  }
-}
+    const { chat_id, chat_name, agent_id, agent_name, action } = req.body;
+    res.json(await sbReq('/chat_log', 'POST', { chat_id, chat_name, agent_id, agent_name, action }));
+  } catch(e) { res.json({ ok: false, error: e.message }); }
+});
 
-function renderChats(chats) {
-  const list = document.getElementById('chats-list');
+// Health
+app.get('/api/health', (req, res) => res.json({ ok: true, service: 'cltiene-chat-v2', uptime: process.uptime() }));
 
-  // Agente sin chats asignados
-  if (!chats.length && !isAdmin()) {
-    list.innerHTML = '<div style="padding:32px 16px;text-align:center;color:var(--muted)">'
-      + '<div style="font-size:40px;margin-bottom:12px;opacity:.4">📭</div>'
-      + '<p style="font-size:13px">No tienes chats asignados.<br>Espera a que el admin te asigne uno.</p>'
-      + '</div>';
-    return;
-  }
-  if (!chats.length) {
-    list.innerHTML = '<p style="padding:24px;text-align:center;color:var(--muted);font-size:13px">Sin chats</p>';
-    return;
-  }
-
-  list.innerHTML = chats.map(c => {
-    const name = c.name || formatPhone(c.id);
-    const preview = c.last_message?.text?.body || c.last_message?.caption || '📎 Adjunto';
-    const time = c.last_message?.timestamp ? formatTime(c.last_message.timestamp) : '';
-    const unread = c.unread_count > 0 ? '<div class="chat-unread">' + c.unread_count + '</div>' : '';
-    const active = c.id === currentChatId ? ' active' : '';
-    const assign = chatAssignments[c.id];
-
-    let agentTag = '';
-    if (assign) {
-      agentTag = '<div class="chat-agent-tag" style="background:' + assign.agent_color + '20;color:' + assign.agent_color + '">👤 ' + assign.agent_name + '</div>';
-    } else if (isAdmin()) {
-      agentTag = '<div class="chat-unassigned-tag">⚠️ Sin asignar</div>';
-    }
-
-    return '<div class="chat-item' + active + '" onclick="openChat(\'' + esc(c.id) + '\',\'' + esc(name) + '\')">'
-      + '<div class="chat-avatar">' + name.charAt(0).toUpperCase() + '</div>'
-      + '<div class="chat-info">'
-        + '<div class="chat-name">' + escH(name) + '</div>'
-        + '<div class="chat-preview">' + escH(String(preview).slice(0,45)) + '</div>'
-        + agentTag
-      + '</div>'
-      + '<div class="chat-meta"><div class="chat-time">' + time + '</div>' + unread + '</div>'
-      + '</div>';
-  }).join('');
-}
-
-function filterChats() {
-  const q = document.getElementById('search-input').value.toLowerCase();
-  renderChats(getFilteredChats().filter(c => (c.name || c.id).toLowerCase().includes(q)));
-}
-
-// ── Abrir chat ────────────────────────────────────────────────────────────────
-async function openChat(chatId, name) {
-  currentChatId = chatId;
-  document.getElementById('chat-name').textContent = name;
-  document.getElementById('chat-phone').textContent = formatPhone(chatId);
-  document.getElementById('chat-avatar').textContent = name.charAt(0).toUpperCase();
-  document.getElementById('no-chat').style.display = 'none';
-  const view = document.getElementById('chat-view');
-  view.style.display = 'flex';
-  updateChatAgentLabel(chatId);
-  renderChats(getFilteredChats());
-
-  // Barra de asignación solo admin
-  if (isAdmin()) {
-    document.getElementById('assign-bar').style.display = 'flex';
-    const currAssign = chatAssignments[chatId];
-    const sel = document.getElementById('assign-select');
-    sel.value = currAssign ? currAssign.agent_id : '';
-  }
-
-  checkChatAccess(chatId);
-
-  document.getElementById('chats-panel').classList.add('hidden');
-  document.getElementById('messages-panel').classList.add('active');
-
-  // Log: apertura
-  try {
-    await sbFetch('/log', 'POST', {
-      chat_id: chatId, chat_name: name,
-      agent_id: currentAgent.id, agent_name: currentAgent.name,
-      action: 'Abrió chat'
-    });
-  } catch(e) {}
-
-  await loadMessages(chatId);
-}
-
-function backToChats() {
-  document.getElementById('chats-panel').classList.remove('hidden');
-  document.getElementById('messages-panel').classList.remove('active');
-}
-
-// ── Mensajes ──────────────────────────────────────────────────────────────────
-async function loadMessages(chatId) {
-  const list = document.getElementById('msg-list');
-  list.innerHTML = '<div class="loader"></div>';
-  try {
-    const res = await fetch('/api/messages/' + encodeURIComponent(chatId));
-    const data = await res.json();
-    renderMessages(data.messages || []);
-  } catch(e) { list.innerHTML = '<p style="padding:24px;text-align:center;color:var(--muted)">Error</p>'; }
-}
-
-function renderMessages(messages) {
-  const list = document.getElementById('msg-list');
-  if (!messages.length) { list.innerHTML = '<p style="padding:24px;text-align:center;color:var(--muted);font-size:13px">Sin mensajes</p>'; return; }
-  let lastDate = '';
-  list.innerHTML = messages.map(m => {
-    const text = m.text?.body || m.caption || (m.type !== 'text' ? '📎 ' + m.type : '');
-    const ts = new Date((m.timestamp || 0) * 1000);
-    const dateStr = ts.toLocaleDateString('es-CO', { day:'2-digit', month:'short', year:'numeric' });
-    const timeStr = ts.toLocaleTimeString('es-CO', { hour:'2-digit', minute:'2-digit' });
-    let div = '';
-    if (dateStr !== lastDate) { div = '<div class="msg-date-divider">' + dateStr + '</div>'; lastDate = dateStr; }
-    return div + '<div class="msg-bubble ' + (m.from_me ? 'outgoing' : 'incoming') + '">'
-      + escH(text) + '<div class="msg-time">' + timeStr + '</div></div>';
-  }).join('');
-  list.scrollTop = list.scrollHeight;
-}
-
-async function sendMessage() {
-  const input = document.getElementById('msg-input');
-  const text = input.value.trim();
-  if (!text || !currentChatId) return;
-  document.getElementById('btn-send').disabled = true;
-  input.disabled = true;
-  try {
-    const res = await fetch('/api/send', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ to: currentChatId, message: text }) });
-    const data = await res.json();
-    if (data.ok) { input.value = ''; input.style.height = 'auto'; await loadMessages(currentChatId); }
-    else alert('Error: ' + (data.error || 'intenta de nuevo'));
-  } catch(e) { alert('Error de conexión'); }
-  finally {
-    document.getElementById('btn-send').disabled = false;
-    input.disabled = false;
-    input.focus();
-  }
-}
-
-// ── Control de acceso ─────────────────────────────────────────────────────────
-function enableChatInput(enabled, reason) {
-  const input = document.getElementById('msg-input');
-  const btn   = document.getElementById('btn-send');
-  const banner = document.getElementById('readonly-banner');
-  const readonlyMsg = document.getElementById('readonly-msg');
-
-  input.disabled = !enabled;
-  btn.disabled   = !enabled;
-  input.style.opacity = enabled ? '1' : '.5';
-  input.style.cursor  = enabled ? 'text' : 'not-allowed';
-  btn.style.opacity   = enabled ? '1' : '.4';
-
-  banner.classList.remove('show');
-
-  if (!enabled) {
-    if (reason === 'other-agent') {
-      const assign = chatAssignments[currentChatId];
-      input.placeholder = '🔒 Este chat está siendo atendido por ' + (assign ? assign.agent_name : 'otro agente');
-      readonlyMsg.textContent = 'Solo lectura — asignado a ' + (assign ? assign.agent_name : 'otro agente');
-      banner.classList.add('show');
-    } else if (reason === 'unassigned-agent') {
-      input.placeholder = '⏳ Espera a que el admin te asigne este chat...';
-      readonlyMsg.textContent = 'Este chat no te está asignado — modo lectura';
-      banner.classList.add('show');
-    } else {
-      input.placeholder = '⚠️ Asigna un agente para habilitar el chat...';
-    }
-  } else {
-    input.placeholder = 'Escribe un mensaje...';
-  }
-}
-
-function checkChatAccess(chatId) {
-  const assign = chatAssignments[chatId];
-
-  if (isAdmin()) {
-    // Admin SIEMPRE puede escribir en cualquier chat
-    enableChatInput(true);
-    return;
-  }
-
-  // Agente
-  if (!assign) {
-    // Sin asignar — solo lectura para agente
-    enableChatInput(false, 'unassigned-agent');
-  } else if (assign.agent_id === currentAgent.id) {
-    // Es su chat asignado — puede escribir
-    enableChatInput(true);
-  } else {
-    // Asignado a otro — solo lectura
-    enableChatInput(false, 'other-agent');
-  }
-}
-
-// ── Modo claro/oscuro ─────────────────────────────────────────────────────────
-function toggleModo() {
-  const isLight = document.body.classList.toggle('light-mode');
-  document.getElementById('btn-modo').textContent = isLight ? '☀️' : '🌙';
-  localStorage.setItem('chat-modo', isLight ? 'light' : 'dark');
-  const logo = document.getElementById('topbar-logo');
-  if (logo) logo.src = isLight
-    ? 'https://cltiene.com/wp-content/uploads/2025/10/logo-CL.png'
-    : 'https://cltiene.com/wp-content/uploads/2026/01/e0280ba2b169453b2ae09ecf07c2b8d01673e12b.png';
-}
-(function() {
-  if (localStorage.getItem('chat-modo') === 'light') {
-    document.body.classList.add('light-mode');
-    document.getElementById('btn-modo').textContent = '☀️';
-  }
-})();
-
-function cerrarSesion() {
-  if (confirm('¿Cerrar sesión?')) { sessionStorage.removeItem('chat-agent'); location.reload(); }
-}
-
-// ── Helpers ───────────────────────────────────────────────────────────────────
-function formatPhone(id) { return '+' + String(id).replace('@s.whatsapp.net','').replace('@g.us',''); }
-function formatTime(ts) {
-  const d = new Date(ts * 1000), now = new Date();
-  if (d.toDateString() === now.toDateString()) return d.toLocaleTimeString('es-CO', { hour:'2-digit', minute:'2-digit' });
-  return d.toLocaleDateString('es-CO', { day:'2-digit', month:'short' });
-}
-function escH(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
-function esc(s) { return String(s).replace(/'/g,"\\'"); }
-</script>
-</body>
-</html>
+app.listen(PORT, '0.0.0.0', () => console.log('✅ CL TIENE Chat v2 en http://localhost:' + PORT));
