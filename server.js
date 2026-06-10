@@ -353,7 +353,7 @@ app.get('/wip/subscriptions', async (req, res) => {
   } catch(e) { res.status(500).json({ message: e.message }); }
 });
 
-// ══ FIX: /wip/subscriptions/detail — llamada inicial + espera + llamada final ══
+// ══ FIX: /wip/subscriptions/detail — devuelve la respuesta con más tipos ══
 app.post('/wip/subscriptions/detail', async (req, res) => {
   const env = req.body.env || 'prod';
   const cfg = getCfg(env);
@@ -365,22 +365,56 @@ app.post('/wip/subscriptions/detail', async (req, res) => {
   };
 
   try {
-    // Llamada 1: "calienta" el caché de WIP
+    // Llamada inmediata
     const r1 = await wipFetch('/Customer/api/v1/Customer/Subscription/Consumption', 'POST', wipBody, env);
-    console.log('[DETAIL] Llamada 1: ' + (r1.data.typeServices || []).length + ' tipos');
+    const n1 = (r1.data.typeServices || []).length;
+    console.log('[DETAIL] Llamada 1: ' + n1 + ' tipos');
 
-    // Esperar que WIP actualice su caché interno
-    await new Promise(resolve => setTimeout(resolve, 2500));
-
-    // Llamada 2: ahora WIP ya tiene el caché caliente, devuelve completo
+    // Segunda llamada después de 3s
+    await new Promise(resolve => setTimeout(resolve, 3000));
     const r2 = await wipFetch('/Customer/api/v1/Customer/Subscription/Consumption', 'POST', wipBody, env);
-    console.log('[DETAIL] Llamada 2: ' + (r2.data.typeServices || []).length + ' tipos');
+    const n2 = (r2.data.typeServices || []).length;
+    console.log('[DETAIL] Llamada 2: ' + n2 + ' tipos');
 
-    // Usar siempre la segunda respuesta (caché caliente)
-    res.status(200).json(r2.data);
+    // Tercera llamada inmediata después
+    const r3 = await wipFetch('/Customer/api/v1/Customer/Subscription/Consumption', 'POST', wipBody, env);
+    const n3 = (r3.data.typeServices || []).length;
+    console.log('[DETAIL] Llamada 3: ' + n3 + ' tipos');
+
+    // Unir todos los tipos únicos de las 3 respuestas
+    const tiposMap = new Map();
+    [r1, r2, r3].forEach(r => {
+      (r.data.typeServices || []).forEach(t => {
+        if (!tiposMap.has(t.id)) tiposMap.set(t.id, t);
+      });
+    });
+
+    // Usar r2 como base (caché caliente) con tipos completos
+    const baseData = r2.data;
+    baseData.typeServices = Array.from(tiposMap.values());
+    console.log('[DETAIL] Total tipos únicos: ' + baseData.typeServices.length);
+
+    res.status(200).json(baseData);
   } catch(e) {
     res.status(500).json({ message: e.message });
   }
+});
+
+// ══ Precalentar caché WIP para todas las BUs de un cliente ══
+app.post('/wip/subscriptions/warmup', async (req, res) => {
+  const env = req.body.env || 'prod';
+  const cfg = getCfg(env);
+  const { customerId, businessUnitIds } = req.body;
+  if (!customerId || !businessUnitIds) return res.json({ ok: true });
+
+  // Fire and forget — no esperamos respuesta
+  businessUnitIds.forEach(buId => {
+    wipFetch('/Customer/api/v1/Customer/Subscription/Consumption', 'POST', {
+      customerId, businessUnitId: buId, timeZone: 'America/Bogota', companyId: cfg.COMPANY_ID
+    }, env).catch(() => {});
+  });
+
+  res.json({ ok: true, warming: businessUnitIds.length });
 });
 
 app.post('/wip/webhook', async (req, res) => {
@@ -506,6 +540,30 @@ app.get('/api/suscriptores/total', async (req, res) => {
     await Promise.all(promesas);
     res.json({ ok: true, total_suscriptores: seen.size, nota: 'Total de documentos únicos con suscripción en WIP' });
   } catch(e) { res.json({ ok: false, error: e.message }); }
+});
+
+// ══ DIAGNÓSTICO TEMPORAL: ver tipos de servicio crudos de WIP ══
+app.get('/api/diag/tipos/:customerId/:buId', async (req, res) => {
+  try {
+    const cfg = getCfg('prod');
+    const wipBody = {
+      customerId: req.params.customerId,
+      businessUnitId: req.params.buId,
+      timeZone: 'America/Bogota',
+      companyId: cfg.COMPANY_ID
+    };
+    const r = await wipFetch('/Customer/api/v1/Customer/Subscription/Consumption', 'POST', wipBody, 'prod');
+    const todos = (r.data.typeServices || []);
+    const activos = todos.filter(t => t.availability && t.enabled && t.serviceLimit > 0);
+    res.json({
+      customerId: req.params.customerId,
+      buId: req.params.buId,
+      total_tipos: todos.length,
+      activos: activos.length,
+      tipos_activos: activos.map(t => ({ id: t.id, name: t.name, limit: t.serviceLimit, used: t.consumption })),
+      raw_first3: todos.slice(0, 3)
+    });
+  } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
 app.get('/api/health', function(req, res) {
