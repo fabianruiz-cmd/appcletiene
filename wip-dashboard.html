@@ -912,10 +912,13 @@ async function onBUChange() {
   await cargarTipos(clienteData.id, buId);
 }
 
-// ════ FIX: cargarTipos sin acumulación ════
+// ════ FIX: cargarTipos con token anti-concurrencia ════
+let _cargarTiposToken = 0;
+
 async function cargarTipos(customerId, buId) {
   const tipoSel = document.getElementById('ag-tipo');
-  // Limpiar SIEMPRE antes de la petición
+  // Incrementar token — cualquier petición anterior quedará obsoleta
+  const myToken = ++_cargarTiposToken;
   tipoSel.innerHTML = '<option value="">Cargando...</option>';
   try {
     const res = await fetch('/wip/subscriptions/detail', {
@@ -924,9 +927,13 @@ async function cargarTipos(customerId, buId) {
       body: JSON.stringify({ customerId, businessUnitId: buId, companyId: COMPANY_ID })
     });
     const data = await res.json();
+
+    // Si llegó una petición más nueva, ignorar esta respuesta
+    if (myToken !== _cargarTiposToken) return;
+
     const tipos = (data.typeServices || []).filter(t => t.availability && t.enabled && t.serviceLimit > 0);
 
-    // Construir HTML completo en variable y asignar de UNA SOLA VEZ (evita acumulación)
+    // Asignar de UNA SOLA VEZ (nunca +=)
     if (!tipos.length) {
       tipoSel.innerHTML = '<option value="">Sin servicios disponibles</option>';
     } else {
@@ -936,6 +943,7 @@ async function cargarTipos(customerId, buId) {
       tipoSel.innerHTML = '<option value="">Seleccione el tipo...</option>' + opts;
     }
   } catch(e) {
+    if (myToken !== _cargarTiposToken) return;
     tipoSel.innerHTML = '<option value="">Error al cargar tipos</option>';
   }
 }
