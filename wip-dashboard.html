@@ -831,9 +831,11 @@ async function consultarCliente() {
       });
     });
     const clientes = [...suscripcionesMap.values()];
+    window._allClientes = clientes; // guardar para onBUChange
 
     if (clientes.length > 0) {
-      clienteData = clientes[0];
+      // Usar la suscripción ACTIVA como base, no la primera
+      clienteData = clientes.find(c => c.valid) || clientes[0];
       const planesActivos = clientes.filter(c => c.valid).map(c => c.nombrePlan);
       const planesExp     = clientes.filter(c => !c.valid).map(c => c.nombrePlan);
       const resumen = planesActivos.length
@@ -881,6 +883,16 @@ async function consultarCliente() {
     // Limpiar tipos al consultar nuevo cliente
     document.getElementById('ag-tipo').innerHTML = '<option value="">Seleccione el tipo...</option>';
 
+    // Precalentar caché WIP para todas las BUs del cliente (fire and forget)
+    if (clientes.length > 0) {
+      const buIds = [...new Set(clientes.flatMap(c => c.busCubiertas.map(b => b.id)))];
+      fetch('/wip/subscriptions/warmup', {
+        method: 'POST',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({ customerId: clientes[0].id, businessUnitIds: buIds })
+      }).catch(() => {});
+    }
+
   } catch(e) {
     alert('Error al consultar: ' + e.message);
   } finally {
@@ -911,7 +923,10 @@ async function onPlanChange() {
 async function onBUChange() {
   const buId = document.getElementById('ag-bu').value;
   if (!buId || !clienteData) return;
-  await cargarTipos(clienteData.id, buId);
+  // Buscar la suscripción activa para esta BU específica
+  const suscActiva = (window._allClientes || []).find(c => c.valid && c.busCubiertas.some(b => b.id === buId));
+  const customerId = suscActiva ? suscActiva.id : clienteData.id;
+  await cargarTipos(customerId, buId);
 }
 
 // ════ cargarTipos — el backend ya maneja doble llamada y devuelve la más completa ════
