@@ -903,8 +903,7 @@ async function consultarCliente() {
 
 function resetClienteInfo() {
   clienteData = null;
-  // Limpiar caché de tipos al cambiar de cliente
-  Object.keys(_tiposCache).forEach(k => delete _tiposCache[k]);
+  window._allClientes = [];
   document.getElementById('client-box').className = 'client-box';
   document.getElementById('ag-clientname').value = '';
   document.getElementById('ag-plan').innerHTML = '<option value="">Seleccione plan</option>';
@@ -933,7 +932,7 @@ async function onBUChange() {
   await cargarTipos(customerId, buId);
 }
 
-// ════ cargarTipos — el backend ya maneja doble llamada y devuelve la más completa ════
+// ════ cargarTipos — llama con TODOS los customerIds activos y une tipos únicos ════
 let _cargarTiposToken = 0;
 
 async function cargarTipos(customerId, buId) {
@@ -941,14 +940,38 @@ async function cargarTipos(customerId, buId) {
   const myToken = ++_cargarTiposToken;
   tipoSel.innerHTML = '<option value="">Cargando...</option>';
   try {
-    const res = await fetch('/wip/subscriptions/detail', {
-      method: 'POST',
-      headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({ customerId, businessUnitId: buId, companyId: COMPANY_ID })
-    });
-    const data = await res.json();
+    // Obtener todos los customerIds activos (pueden ser varios para el mismo documento)
+    const idsActivos = [...new Set(
+      (window._allClientes || [])
+        .filter(c => c.valid)
+        .map(c => c.id)
+    )];
+    if (!idsActivos.includes(customerId)) idsActivos.push(customerId);
+
+    // Llamar a WIP con cada customerId activo en paralelo
+    const llamadas = await Promise.all(
+      idsActivos.map(cid =>
+        fetch('/wip/subscriptions/detail', {
+          method: 'POST',
+          headers: {'Content-Type':'application/json'},
+          body: JSON.stringify({ customerId: cid, businessUnitId: buId, companyId: COMPANY_ID })
+        }).then(r => r.json()).catch(() => ({}))
+      )
+    );
+
     if (myToken !== _cargarTiposToken) return;
-    const tipos = (data.typeServices || []).filter(t => t.availability && t.enabled && t.serviceLimit > 0);
+
+    // Unir todos los tipos únicos de todas las respuestas
+    const tiposMap = new Map();
+    llamadas.forEach(data => {
+      (data.typeServices || [])
+        .filter(t => t.availability && t.enabled && t.serviceLimit > 0)
+        .forEach(t => { if (!tiposMap.has(t.id)) tiposMap.set(t.id, t); });
+    });
+
+    const tipos = Array.from(tiposMap.values());
+    console.log('[cargarTipos] IDs usados:', idsActivos, '| tipos únicos:', tipos.length);
+
     if (!tipos.length) {
       tipoSel.innerHTML = '<option value="">Sin servicios disponibles</option>';
     } else {
