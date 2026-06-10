@@ -932,6 +932,9 @@ async function cargarTipos(customerId, buId) {
     if (_tiposCache[cacheKey]) {
       tipos = _tiposCache[cacheKey];
     } else {
+      // Esperar 1.2s para que WIP cargue todos los servicios antes de leer
+      await new Promise(r => setTimeout(r, 1200));
+      if (myToken !== _cargarTiposToken) return;
       const res = await fetch('/wip/subscriptions/detail', {
         method: 'POST',
         headers: {'Content-Type':'application/json'},
