@@ -914,35 +914,22 @@ async function onBUChange() {
   await cargarTipos(clienteData.id, buId);
 }
 
-// ════ FIX: cargarTipos — espera 2 llamadas a WIP y toma la mayor ════
+// ════ cargarTipos — el backend ya maneja doble llamada y devuelve la más completa ════
 let _cargarTiposToken = 0;
 
 async function cargarTipos(customerId, buId) {
   const tipoSel = document.getElementById('ag-tipo');
   const myToken = ++_cargarTiposToken;
-  tipoSel.innerHTML = '<option value="">Cargando servicios...</option>';
-
+  tipoSel.innerHTML = '<option value="">Cargando...</option>';
   try {
-    // Llamada 1 inmediata
-    const fetchTipos = () => fetch('/wip/subscriptions/detail', {
+    const res = await fetch('/wip/subscriptions/detail', {
       method: 'POST',
       headers: {'Content-Type':'application/json'},
       body: JSON.stringify({ customerId, businessUnitId: buId, companyId: COMPANY_ID })
-    }).then(r => r.json()).then(d => (d.typeServices || []).filter(t => t.availability && t.enabled && t.serviceLimit > 0));
-
-    const r1 = await fetchTipos();
+    });
+    const data = await res.json();
     if (myToken !== _cargarTiposToken) return;
-
-    // Esperar 2s y hacer segunda llamada
-    await new Promise(r => setTimeout(r, 2000));
-    if (myToken !== _cargarTiposToken) return;
-
-    const r2 = await fetchTipos();
-    if (myToken !== _cargarTiposToken) return;
-
-    // Usar la respuesta con MÁS tipos (la más completa)
-    const tipos = r2.length >= r1.length ? r2 : r1;
-
+    const tipos = (data.typeServices || []).filter(t => t.availability && t.enabled && t.serviceLimit > 0);
     if (!tipos.length) {
       tipoSel.innerHTML = '<option value="">Sin servicios disponibles</option>';
     } else {
