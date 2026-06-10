@@ -353,7 +353,7 @@ app.get('/wip/subscriptions', async (req, res) => {
   } catch(e) { res.status(500).json({ message: e.message }); }
 });
 
-// ══ FIX: /wip/subscriptions/detail — doble llamada, devuelve la más completa ══
+// ══ FIX: /wip/subscriptions/detail — 3 llamadas en paralelo, une tipos únicos ══
 app.post('/wip/subscriptions/detail', async (req, res) => {
   const env = req.body.env || 'prod';
   const cfg = getCfg(env);
@@ -365,23 +365,32 @@ app.post('/wip/subscriptions/detail', async (req, res) => {
   };
 
   try {
-    // Primera llamada inmediata
-    const r1 = await wipFetch('/Customer/api/v1/Customer/Subscription/Consumption', 'POST', wipBody, env);
-    const tipos1 = (r1.data.typeServices || []).filter(t => t.availability && t.enabled && t.serviceLimit > 0);
-    console.log('[DETAIL] Primera llamada: ' + tipos1.length + ' tipos');
+    // 3 llamadas en paralelo — WIP a veces responde incompleto, unimos todos los tipos únicos
+    const llamadas = await Promise.all([
+      wipFetch('/Customer/api/v1/Customer/Subscription/Consumption', 'POST', wipBody, env),
+      wipFetch('/Customer/api/v1/Customer/Subscription/Consumption', 'POST', wipBody, env),
+      wipFetch('/Customer/api/v1/Customer/Subscription/Consumption', 'POST', wipBody, env),
+    ]);
 
-    // Esperar 1.5s y hacer segunda llamada
-    await new Promise(resolve => setTimeout(resolve, 1500));
+    // Tomar la respuesta base de la que tenga más tipos
+    let baseData = llamadas[0].data;
+    let maxTipos = (baseData.typeServices || []).length;
+    llamadas.forEach(r => {
+      const n = (r.data.typeServices || []).length;
+      if (n > maxTipos) { maxTipos = n; baseData = r.data; }
+    });
 
-    const r2 = await wipFetch('/Customer/api/v1/Customer/Subscription/Consumption', 'POST', wipBody, env);
-    const tipos2 = (r2.data.typeServices || []).filter(t => t.availability && t.enabled && t.serviceLimit > 0);
-    console.log('[DETAIL] Segunda llamada: ' + tipos2.length + ' tipos');
+    // Unir todos los tipos únicos por id de todas las respuestas
+    const tiposMap = new Map();
+    llamadas.forEach(r => {
+      (r.data.typeServices || []).forEach(t => {
+        if (!tiposMap.has(t.id)) tiposMap.set(t.id, t);
+      });
+    });
+    baseData.typeServices = Array.from(tiposMap.values());
+    console.log('[DETAIL] Tipos únicos tras 3 llamadas paralelas: ' + baseData.typeServices.length);
 
-    // Usar la respuesta con MÁS tipos de servicio
-    const mejorRespuesta = tipos2.length >= tipos1.length ? r2.data : r1.data;
-    console.log('[DETAIL] Usando respuesta con ' + Math.max(tipos1.length, tipos2.length) + ' tipos');
-
-    res.status(200).json(mejorRespuesta);
+    res.status(200).json(baseData);
   } catch(e) {
     res.status(500).json({ message: e.message });
   }
