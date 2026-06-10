@@ -975,9 +975,17 @@ async function cargarTipos(customerId, buId) {
     if (!tipos.length) {
       tipoSel.innerHTML = '<option value="">Sin servicios disponibles</option>';
     } else {
-      const opts = tipos.map(t =>
+      // Separar activos (serviceLimit > 0) e ilimitados/sin límite configurado
+      const activos = tipos.filter(t => t.serviceLimit > 0);
+      const sinLimite = tipos.filter(t => t.serviceLimit === 0);
+      let opts = activos.map(t =>
         `<option value="${t.id}|${buId}|${t.name}">${t.name} (${t.serviceLimit - t.consumption} usos restantes)</option>`
       ).join('');
+      if (sinLimite.length) {
+        opts += sinLimite.map(t =>
+          `<option value="${t.id}|${buId}|${t.name}" style="color:#f59e0b">${t.name} (sin límite configurado)</option>`
+        ).join('');
+      }
       tipoSel.innerHTML = '<option value="">Seleccione el tipo...</option>' + opts;
     }
   } catch(e) {
