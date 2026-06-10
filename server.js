@@ -384,7 +384,8 @@ app.post('/wip/subscriptions/detail', async (req, res) => {
     // Unir todos los tipos únicos de las 3 respuestas
     const tiposMap = new Map();
     [r1, r2, r3].forEach(r => {
-      (r.data.typeServices || []).forEach(t => {
+      // Incluir todos los habilitados, incluyendo serviceLimit = 0
+      (r.data.typeServices || []).filter(t => t.enabled).forEach(t => {
         if (!tiposMap.has(t.id)) tiposMap.set(t.id, t);
       });
     });
@@ -555,6 +556,7 @@ app.get('/api/diag/tipos/:customerId/:buId', async (req, res) => {
     const r = await wipFetch('/Customer/api/v1/Customer/Subscription/Consumption', 'POST', wipBody, 'prod');
     const todos = (r.data.typeServices || []);
     const activos = todos.filter(t => t.availability && t.enabled && t.serviceLimit > 0);
+    const habilitados = todos.filter(t => t.enabled); // todos habilitados incluyendo límite 0
     res.json({
       customerId: req.params.customerId,
       buId: req.params.buId,
