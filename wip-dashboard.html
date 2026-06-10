@@ -891,6 +891,8 @@ async function consultarCliente() {
 
 function resetClienteInfo() {
   clienteData = null;
+  // Limpiar caché de tipos al cambiar de cliente
+  Object.keys(_tiposCache).forEach(k => delete _tiposCache[k]);
   document.getElementById('client-box').className = 'client-box';
   document.getElementById('ag-clientname').value = '';
   document.getElementById('ag-plan').innerHTML = '<option value="">Seleccione plan</option>';
@@ -912,28 +914,42 @@ async function onBUChange() {
   await cargarTipos(clienteData.id, buId);
 }
 
-// ════ FIX: cargarTipos con token anti-concurrencia ════
+// ════ FIX: cargarTipos con caché por cliente+BU ════
 let _cargarTiposToken = 0;
+const _tiposCache = {}; // clave: customerId+buId
 
 async function cargarTipos(customerId, buId) {
   const tipoSel = document.getElementById('ag-tipo');
-  // Incrementar token — cualquier petición anterior quedará obsoleta
   const myToken = ++_cargarTiposToken;
   tipoSel.innerHTML = '<option value="">Cargando...</option>';
-  try {
-    const res = await fetch('/wip/subscriptions/detail', {
-      method: 'POST',
-      headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({ customerId, businessUnitId: buId, companyId: COMPANY_ID })
-    });
-    const data = await res.json();
 
-    // Si llegó una petición más nueva, ignorar esta respuesta
+  const cacheKey = (customerId || 'null') + '|' + buId;
+
+  try {
+    let tipos;
+
+    // Si ya tenemos estos tipos en caché, usarlos directamente
+    if (_tiposCache[cacheKey]) {
+      tipos = _tiposCache[cacheKey];
+    } else {
+      const res = await fetch('/wip/subscriptions/detail', {
+        method: 'POST',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({ customerId, businessUnitId: buId, companyId: COMPANY_ID })
+      });
+      const data = await res.json();
+
+      // Si llegó una petición más nueva, ignorar
+      if (myToken !== _cargarTiposToken) return;
+
+      tipos = (data.typeServices || []).filter(t => t.availability && t.enabled && t.serviceLimit > 0);
+      // Guardar en caché
+      _tiposCache[cacheKey] = tipos;
+    }
+
     if (myToken !== _cargarTiposToken) return;
 
-    const tipos = (data.typeServices || []).filter(t => t.availability && t.enabled && t.serviceLimit > 0);
-
-    // Asignar de UNA SOLA VEZ (nunca +=)
+    // Asignar de UNA SOLA VEZ
     if (!tipos.length) {
       tipoSel.innerHTML = '<option value="">Sin servicios disponibles</option>';
     } else {
