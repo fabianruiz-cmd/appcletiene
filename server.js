@@ -353,7 +353,7 @@ app.get('/wip/subscriptions', async (req, res) => {
   } catch(e) { res.status(500).json({ message: e.message }); }
 });
 
-// ══ FIX: /wip/subscriptions/detail — 3 llamadas en paralelo, une tipos únicos ══
+// ══ FIX: /wip/subscriptions/detail — llamada inicial + espera + llamada final ══
 app.post('/wip/subscriptions/detail', async (req, res) => {
   const env = req.body.env || 'prod';
   const cfg = getCfg(env);
@@ -365,32 +365,19 @@ app.post('/wip/subscriptions/detail', async (req, res) => {
   };
 
   try {
-    // 3 llamadas en paralelo — WIP a veces responde incompleto, unimos todos los tipos únicos
-    const llamadas = await Promise.all([
-      wipFetch('/Customer/api/v1/Customer/Subscription/Consumption', 'POST', wipBody, env),
-      wipFetch('/Customer/api/v1/Customer/Subscription/Consumption', 'POST', wipBody, env),
-      wipFetch('/Customer/api/v1/Customer/Subscription/Consumption', 'POST', wipBody, env),
-    ]);
+    // Llamada 1: "calienta" el caché de WIP
+    const r1 = await wipFetch('/Customer/api/v1/Customer/Subscription/Consumption', 'POST', wipBody, env);
+    console.log('[DETAIL] Llamada 1: ' + (r1.data.typeServices || []).length + ' tipos');
 
-    // Tomar la respuesta base de la que tenga más tipos
-    let baseData = llamadas[0].data;
-    let maxTipos = (baseData.typeServices || []).length;
-    llamadas.forEach(r => {
-      const n = (r.data.typeServices || []).length;
-      if (n > maxTipos) { maxTipos = n; baseData = r.data; }
-    });
+    // Esperar que WIP actualice su caché interno
+    await new Promise(resolve => setTimeout(resolve, 2500));
 
-    // Unir todos los tipos únicos por id de todas las respuestas
-    const tiposMap = new Map();
-    llamadas.forEach(r => {
-      (r.data.typeServices || []).forEach(t => {
-        if (!tiposMap.has(t.id)) tiposMap.set(t.id, t);
-      });
-    });
-    baseData.typeServices = Array.from(tiposMap.values());
-    console.log('[DETAIL] Tipos únicos tras 3 llamadas paralelas: ' + baseData.typeServices.length);
+    // Llamada 2: ahora WIP ya tiene el caché caliente, devuelve completo
+    const r2 = await wipFetch('/Customer/api/v1/Customer/Subscription/Consumption', 'POST', wipBody, env);
+    console.log('[DETAIL] Llamada 2: ' + (r2.data.typeServices || []).length + ' tipos');
 
-    res.status(200).json(baseData);
+    // Usar siempre la segunda respuesta (caché caliente)
+    res.status(200).json(r2.data);
   } catch(e) {
     res.status(500).json({ message: e.message });
   }
