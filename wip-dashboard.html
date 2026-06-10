@@ -232,7 +232,6 @@
       .sidebar { display: none !important; }
       .main { margin-left: 0; }
       .content { padding: 12px; }
-      /* Botón hamburguesa */
       #mob-menu-btn {
         display: flex !important;
         position: fixed; top: 12px; left: 12px;
@@ -242,7 +241,6 @@
         z-index: 500; cursor: pointer; font-size: 20px;
         box-shadow: 0 2px 8px rgba(0,0,0,.3);
       }
-      /* Panel desplegable */
       #mob-drawer {
         display: none;
         position: fixed; top: 0; left: 0; right: 0; bottom: 0;
@@ -328,10 +326,10 @@
       GESTIÓN OPERATIVA
     </div>
     <div style="display:flex;align-items:center;gap:12px">
-    <span id="user-name-top" style="font-size:13px;color:var(--muted2)"></span>
-    <button onclick="toggleModo()" id="btn-modo" style="background:transparent;border:1px solid var(--border2);color:var(--muted2);padding:6px 12px;border-radius:8px;font-size:12px;cursor:pointer;font-family:'Inter',sans-serif">🌙 Oscuro</button>
-    <button onclick="cerrarSesion()" style="background:transparent;border:1px solid var(--border2);color:var(--muted2);padding:6px 12px;border-radius:8px;font-size:12px;cursor:pointer;font-family:'Inter',sans-serif">Cerrar sesión</button>
-  </div>
+      <span id="user-name-top" style="font-size:13px;color:var(--muted2)"></span>
+      <button onclick="toggleModo()" id="btn-modo" style="background:transparent;border:1px solid var(--border2);color:var(--muted2);padding:6px 12px;border-radius:8px;font-size:12px;cursor:pointer;font-family:'Inter',sans-serif">🌙 Oscuro</button>
+      <button onclick="cerrarSesion()" style="background:transparent;border:1px solid var(--border2);color:var(--muted2);padding:6px 12px;border-radius:8px;font-size:12px;cursor:pointer;font-family:'Inter',sans-serif">Cerrar sesión</button>
+    </div>
   </div>
 
   <div class="content">
@@ -349,7 +347,6 @@
         </button>
       </div>
 
-      <!-- Filtros -->
       <div class="filters-bar">
         <div class="filter-group">
           <select id="f-unidad" onchange="buscarServicios()">
@@ -374,14 +371,13 @@
             <option value="placa">Placa</option>
             <option value="nombre">Nombre</option>
           </select>
-          <input type="text" id="f-search" placeholder="Buscar..." readonly style="background:var(--surface);cursor:not-allowed;opacity:.7" style="flex:1" onkeydown="if(event.key==='Enter')buscarServicios()"/>
+          <input type="text" id="f-search" placeholder="Buscar..." readonly style="background:var(--surface);cursor:not-allowed;opacity:.7" onkeydown="if(event.key==='Enter')buscarServicios()"/>
           <button class="btn btn-primary btn-sm" onclick="buscarServicios()">Buscar</button>
         </div>
       </div>
 
       <div class="alert alert-err" id="srv-err"></div>
 
-      <!-- Info del cliente cuando se busca por cédula -->
       <div id="srv-client-bar" style="display:none;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:12px 16px;margin-bottom:12px;align-items:center;gap:16px;flex-wrap:wrap">
         <div style="display:flex;align-items:center;gap:10px">
           <div style="width:36px;height:36px;border-radius:50%;background:rgba(13,122,95,.15);display:flex;align-items:center;justify-content:center;font-size:16px">👤</div>
@@ -410,7 +406,7 @@
               </tr>
             </thead>
             <tbody id="srv-tbody">
-              <tr><td colspan="8"><div class="empty-state"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><p>No se encontraron servicios</p><p style="font-size:11px;margin-top:4px">Asegúrate de seleccionar la Unidad de Negocio correcta.</p></div></td></tr>
+              <tr><td colspan="8"><div class="empty-state"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><p>No se encontraron servicios</p></div></td></tr>
             </tbody>
           </table>
         </div>
@@ -521,7 +517,6 @@
         </div>
 
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px">
-          <!-- Origen -->
           <div>
             <div class="form-section-title" style="font-size:13px;margin-bottom:12px">
               <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>
@@ -540,7 +535,6 @@
               <input type="text" id="ag-from-info" placeholder="Ej. Conjunto residencial, torre 2..."/>
             </div>
           </div>
-          <!-- Destino -->
           <div id="destino-section" style="opacity:.35;pointer-events:none">
             <div class="form-section-title" style="font-size:13px;margin-bottom:12px">
               <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
@@ -677,26 +671,19 @@ const urlParams = new URLSearchParams(window.location.search);
 let cedula = urlParams.get('cedula') || sessionStorage.getItem('cedula') || '';
 let nombre = urlParams.get('nombre') || sessionStorage.getItem('nombre') || '';
 
-// Guardar en sessionStorage
 if (cedula) {
   sessionStorage.setItem('cedula', cedula);
   sessionStorage.setItem('nombre', nombre);
-  // Limpiar URL
   window.history.replaceState({}, '', '/');
 }
 
-// Si no hay sesión, redirigir al login
 if (!cedula) { window.location.href = '/auth'; }
 
-// Al cargar la página
 window.addEventListener('DOMContentLoaded', function() {
-  // Mostrar nombre
   const el = document.getElementById('user-name-top');
   if (el) el.textContent = nombre || ('CC ' + cedula);
-  // Poner cédula en buscador y buscar
   const searchInput = document.getElementById('f-search');
   if (searchInput) searchInput.value = cedula;
-  console.log('[SESION] Cédula:', cedula);
   buscarServicios();
 });
 
@@ -705,13 +692,14 @@ function cerrarModal() {
 }
 
 function cerrarPopup() {
-  document.getElementById('popup-promo').style.display = 'none';
+  const p = document.getElementById('popup-promo');
+  if (p) p.style.display = 'none';
 }
 
-// Mostrar popup al cargar (solo una vez por sesión)
 if (!sessionStorage.getItem('popup-shown')) {
   setTimeout(function() {
-    document.getElementById('popup-promo').style.display = 'flex';
+    const p = document.getElementById('popup-promo');
+    if (p) p.style.display = 'flex';
     sessionStorage.setItem('popup-shown', '1');
   }, 1500);
 }
@@ -725,8 +713,7 @@ const LOGO_OSCURO = 'https://cltiene.com/wp-content/uploads/2026/01/e0280ba2b169
 const LOGO_CLARO  = 'https://cltiene.com/wp-content/uploads/2025/10/logo-CL.png';
 
 function toggleMobMenu() {
-  const drawer = document.getElementById('mob-drawer');
-  drawer.classList.toggle('open');
+  document.getElementById('mob-drawer').classList.toggle('open');
 }
 function closeMobDrawer(e) {
   if (e.target === document.getElementById('mob-drawer')) {
@@ -736,7 +723,6 @@ function closeMobDrawer(e) {
 function mobNav(panel) {
   showPanel(panel);
   document.getElementById('mob-drawer').classList.remove('open');
-  // Actualizar activo
   document.querySelectorAll('#mob-drawer-panel .drawer-item').forEach(function(el) {
     el.classList.remove('active');
   });
@@ -757,7 +743,6 @@ function actualizarLogo(isLight) {
   if (img) img.src = isLight ? LOGO_CLARO : LOGO_OSCURO;
 }
 
-// Aplicar modo guardado
 (function() {
   const modo = localStorage.getItem('modo');
   if (modo === 'light') {
@@ -769,8 +754,6 @@ function actualizarLogo(isLight) {
     });
   }
 })();
-// ────────────────────────────────────────────────────────
-
 
 const PLAN_MAP = {
   '67379e74213b73f99523f063': { plan: 'Plan Salud',     color: '#3b82f6' },
@@ -788,11 +771,9 @@ const PLAN_MAP = {
 const COMPANY_ID = '67379dff213b73f99523f061';
 const USER_ID    = '67a0dcadba440e5f0db90ccc';
 
-// Estado global
-let clienteData = null;  // datos del cliente consultado
-let businessUnits = [];  // BUs de la empresa
-let clienteBUs = [];     // BUs del cliente
-let tiposServicio = {};  // { buId: [tipos] }
+let clienteData = null;
+let businessUnits = [];
+let clienteBUs = [];
 
 // ════ NAVEGACIÓN ════
 function showPanel(name) {
@@ -809,7 +790,6 @@ async function cargarBUs() {
     const res = await fetch('/wip/business-units');
     const data = await res.json();
     businessUnits = data.businessUnits || [];
-    // Llenar filtro de unidades en panel servicios
     const fUnidad = document.getElementById('f-unidad');
     fUnidad.innerHTML = '<option value="">Todas las Unidades</option>';
     businessUnits.forEach(bu => {
@@ -828,27 +808,21 @@ async function consultarCliente() {
   btn.disabled = true;
 
   try {
-    // Cargar BUs si no están cargados
     if (businessUnits.length === 0) await cargarBUs();
 
-    // 1. Buscar cliente en suscripciones (paralelo por BU)
     const promesas = businessUnits.map(bu =>
       fetch(`/wip/subscriptions?searchTerm=${encodeURIComponent(doc)}&businessUnitId=${bu.id}`)
         .then(r => r.json()).catch(() => null)
     );
     const resultados = await Promise.all(promesas);
 
-    // Deduplicar por id — UNA suscripción puede cubrir múltiples BUs (businessUnitIds[])
-    // Guardamos todas las BUs que realmente cubre según la respuesta de la API
     const suscripcionesMap = new Map();
     resultados.forEach((r, i) => {
       const items = Array.isArray(r) ? r : (r && r.id ? [r] : []);
       items.forEach(c => {
         if (!suscripcionesMap.has(c.id)) {
-          // Determinar BUs reales que cubre esta suscripción
           const buIdsCubiertos = Array.isArray(c.businessUnitIds) ? c.businessUnitIds : [businessUnits[i].id];
           const busCubiertas = businessUnits.filter(b => buIdsCubiertos.includes(b.id));
-          // Nombre del plan: usar additionalData["Name subscription"] si existe
           const nombrePlan = (c.additionalData && c.additionalData['Name subscription'])
             ? c.additionalData['Name subscription']
             : (busCubiertas.length === 1 ? (PLAN_MAP[busCubiertas[0].id]?.plan || busCubiertas[0].name) : 'Plan Multi-Servicio');
@@ -858,7 +832,6 @@ async function consultarCliente() {
     });
     const clientes = [...suscripcionesMap.values()];
 
-    // Mostrar info del cliente si existe
     if (clientes.length > 0) {
       clienteData = clientes[0];
       const planesActivos = clientes.filter(c => c.valid).map(c => c.nombrePlan);
@@ -871,7 +844,6 @@ async function consultarCliente() {
       document.getElementById('client-box').className = 'client-box show';
       document.getElementById('ag-clientname').value = clienteData.name || '';
 
-      // Selector de plan: una opción por suscripción (activas primero)
       const planSel = document.getElementById('ag-plan');
       planSel.innerHTML = '<option value="">Seleccione plan</option>';
       [...clientes].sort((a, b) => (b.valid ? 1 : 0) - (a.valid ? 1 : 0)).forEach(c => {
@@ -890,11 +862,9 @@ async function consultarCliente() {
       document.getElementById('client-plan').textContent = 'Sin plan registrado';
       document.getElementById('client-box').className = 'client-box show';
       document.getElementById('ag-clientname').value = '';
-      const planSel = document.getElementById('ag-plan');
-      planSel.innerHTML = '<option value="">Sin plan activo</option>';
+      document.getElementById('ag-plan').innerHTML = '<option value="">Sin plan activo</option>';
     }
 
-    // Selector de BU: mostrar solo las BUs cubiertas por las suscripciones del cliente
     const buSel = document.getElementById('ag-bu');
     buSel.innerHTML = '<option value="">Seleccione una unidad...</option>';
     if (clientes.length > 0) {
@@ -907,6 +877,9 @@ async function consultarCliente() {
         buSel.innerHTML += `<option value="${bu.id}">${bu.name}</option>`;
       });
     }
+
+    // Limpiar tipos al consultar nuevo cliente
+    document.getElementById('ag-tipo').innerHTML = '<option value="">Seleccione el tipo...</option>';
 
   } catch(e) {
     alert('Error al consultar: ' + e.message);
@@ -939,8 +912,10 @@ async function onBUChange() {
   await cargarTipos(clienteData.id, buId);
 }
 
+// ════ FIX: cargarTipos sin acumulación ════
 async function cargarTipos(customerId, buId) {
   const tipoSel = document.getElementById('ag-tipo');
+  // Limpiar SIEMPRE antes de la petición
   tipoSel.innerHTML = '<option value="">Cargando...</option>';
   try {
     const res = await fetch('/wip/subscriptions/detail', {
@@ -950,11 +925,16 @@ async function cargarTipos(customerId, buId) {
     });
     const data = await res.json();
     const tipos = (data.typeServices || []).filter(t => t.availability && t.enabled && t.serviceLimit > 0);
-    tipoSel.innerHTML = '<option value="">Seleccione el tipo...</option>';
-    tipos.forEach(t => {
-      tipoSel.innerHTML += `<option value="${t.id}|${buId}|${t.name}">${t.name} (${t.serviceLimit - t.consumption} usos restantes)</option>`;
-    });
-    if (!tipos.length) tipoSel.innerHTML = '<option value="">Sin servicios disponibles</option>';
+
+    // Construir HTML completo en variable y asignar de UNA SOLA VEZ (evita acumulación)
+    if (!tipos.length) {
+      tipoSel.innerHTML = '<option value="">Sin servicios disponibles</option>';
+    } else {
+      const opts = tipos.map(t =>
+        `<option value="${t.id}|${buId}|${t.name}">${t.name} (${t.serviceLimit - t.consumption} usos restantes)</option>`
+      ).join('');
+      tipoSel.innerHTML = '<option value="">Seleccione el tipo...</option>' + opts;
+    }
   } catch(e) {
     tipoSel.innerHTML = '<option value="">Error al cargar tipos</option>';
   }
@@ -986,7 +966,6 @@ async function registrarServicio() {
     return;
   }
 
-  // Validar que el plan seleccionado sea válido (no expirado)
   const planSel = document.getElementById("ag-plan");
   const planVal = planSel ? planSel.value : null;
   if (planSel && (!planVal || planVal === "")) {
@@ -998,7 +977,6 @@ async function registrarServicio() {
   const [formId, buId, tipoNombre] = tipoRaw.split('|');
   const buName = document.getElementById('ag-bu').options[document.getElementById('ag-bu').selectedIndex].text;
 
-  // Buscar BU en businessUnits para obtener companyFormId
   const bu = businessUnits.find(b => b.id === buId);
   const tipo = bu?.serviceTypes?.find(t => t.formId === formId || t.name === tipoNombre);
   const companyFormId = tipo?.companyFormId || formId;
@@ -1062,14 +1040,10 @@ async function buscarServicios() {
   const estado  = document.getElementById('f-estado').value;
   const buId    = document.getElementById('f-unidad').value;
   const fecha   = document.getElementById('f-fecha').value;
-  const tipo    = document.getElementById('f-tipo')?.value || 'subject';
   const err = document.getElementById('srv-err');
   err.classList.remove('show');
 
-  // Ocultar barra cliente por defecto
-  const clientBar = document.getElementById('srv-client-bar');
-  clientBar.style.display = 'none';
-
+  document.getElementById('srv-client-bar').style.display = 'none';
   document.getElementById('srv-info').textContent = 'Buscando...';
   document.getElementById('srv-tbody').innerHTML = '<tr><td colspan="8" style="text-align:center;padding:24px;color:var(--muted)"><div class="loader" style="border-top-color:var(--primary)"></div></td></tr>';
 
@@ -1084,16 +1058,13 @@ async function buscarServicios() {
     const data = await res.json();
     let rows = data.data || [];
 
-    // Filtros locales
     if (estado) rows = rows.filter(r => r.status === estado);
     if (fecha)  rows = rows.filter(r => r.scheduledDate && r.scheduledDate.startsWith(fecha));
 
     renderTabla(rows, data.totalRows);
 
-    // Si busca por cédula, mostrar planes del cliente
     if (search && rows.length > 0) {
-      const docCliente = search;
-      cargarPlanesClienteEnBarra(docCliente, rows[0]);
+      cargarPlanesClienteEnBarra(search, rows[0]);
     }
   } catch(e) {
     err.textContent = 'Error: ' + e.message;
@@ -1112,7 +1083,6 @@ async function cargarPlanesClienteEnBarra(doc, primerServicio) {
     );
     const resultados = await Promise.all(promesas);
 
-    // Deduplicar suscripciones por id
     const suscMap = new Map();
     resultados.forEach(r => {
       const items = Array.isArray(r) ? r : (r && r.id ? [r] : []);
@@ -1131,15 +1101,13 @@ async function cargarPlanesClienteEnBarra(doc, primerServicio) {
     document.getElementById('srv-client-name').textContent = nombre;
     document.getElementById('srv-client-doc').textContent = 'CC ' + doc;
 
-    // Renderizar tags de planes
     const planesDiv = document.getElementById('srv-client-planes');
     planesDiv.innerHTML = suscripciones.map(s => {
       const activo = s.valid;
       const color = activo ? '#0d7a5f' : '#64748b';
       const bg = activo ? 'rgba(13,122,95,.12)' : 'rgba(100,116,139,.1)';
       const fin = s.additionalData?.['End subscription'] || '';
-      const tooltip = fin ? (activo ? `Vence: ${fin}` : `Venció: ${fin}`) : '';
-      return `<span title="${tooltip}" style="display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:20px;font-size:12px;font-weight:600;background:${bg};color:${color};border:1px solid ${color}30">
+      return `<span title="${activo ? 'Vence' : 'Venció'}: ${fin}" style="display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:20px;font-size:12px;font-weight:600;background:${bg};color:${color};border:1px solid ${color}30">
         ${activo ? '✅' : '⏱️'} ${s.nombrePlan}${fin ? ' · ' + fin : ''}
       </span>`;
     }).join('');
@@ -1167,13 +1135,12 @@ function renderTabla(rows, total) {
     const fecha = r.scheduledDate ? new Date(r.scheduledDate).toLocaleString('es-CO', {day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'}) : '—';
     const wipExp = r.wipExpedient || '—';
     const trackUrl = r.url ? `<a href="${r.url}" target="_blank" class="wip-link">${wipExp}</a>` : `<span style="color:var(--primary);font-weight:600;font-size:12px">${wipExp}</span>`;
-    const placa = r.customerDocument || r.plate || '—';
     return `<tr>
       <td style="color:var(--muted);font-size:12px">${i+1}</td>
       <td style="color:var(--muted);font-size:12px">—</td>
       <td>${trackUrl}</td>
       <td><div style="font-weight:500">${r.finalClientName || r.userName || '—'}</div><div style="font-size:11px;color:var(--muted)">CC ${r.customerDocument || '—'}</div></td>
-      <td>${r.plate ? `<span style="background:var(--border);padding:2px 8px;border-radius:4px;font-size:12px;font-weight:600">${r.plate}</span>` : (placa !== '—' ? `<span style="background:var(--border);padding:2px 8px;border-radius:4px;font-size:12px;font-weight:600">${placa}</span>` : '—')}</td>
+      <td>${r.plate ? `<span style="background:var(--border);padding:2px 8px;border-radius:4px;font-size:12px;font-weight:600">${r.plate}</span>` : '—'}</td>
       <td style="font-size:12px;color:var(--muted)">${r.type || '—'}</td>
       <td style="font-size:12px">${fecha}</td>
       <td><span class="badge ${cls}">${label}</span></td>
@@ -1181,326 +1148,13 @@ function renderTabla(rows, total) {
   }).join('');
 }
 
-// ════ ADMIN — SUSCRIPTORES ════
-const ADMIN_CEDULA = '80799915';
-
-function accederSuscriptores() {
-  if (cedula !== ADMIN_CEDULA) {
-    document.getElementById('modal-restringido').style.display = 'flex';
-    return;
-  }
-  showPanel('suscriptores');
-  // Cargar planes en el filtro (agrupados por plan, no por BU)
-  const buSel = document.getElementById('sub-bu');
-  buSel.innerHTML = '<option value="">Todos los Planes</option>';
-  const planesVistos = new Set();
-  businessUnits.forEach(bu => {
-    const planInfo = PLAN_MAP[bu.id];
-    if (planInfo && !planesVistos.has(planInfo.plan)) {
-      planesVistos.add(planInfo.plan);
-      // Guardar todos los buIds de ese plan como valor
-      const buIds = businessUnits.filter(b => PLAN_MAP[b.id]?.plan === planInfo.plan).map(b => b.id).join(',');
-      buSel.innerHTML += '<option value="' + buIds + '">' + planInfo.plan + '</option>';
-    }
-    if (!planInfo) {
-      buSel.innerHTML += '<option value="' + bu.id + '">' + bu.name + '</option>';
-    }
-  });
-  // Cargar todos automáticamente
-  cargarTodosSuscriptores();
-}
-
-async function cargarTodos() {
-  const btn = document.getElementById('btn-todos');
-  btn.textContent = '⏳ Cargando...';
-  btn.disabled = true;
-  document.getElementById('sub-info').textContent = 'Cargando todos los suscriptores... esto puede tardar 20-30 segundos.';
-  document.getElementById('sub-tbody').innerHTML = '<tr><td colspan="6" style="text-align:center;padding:32px"><div class="loader" style="border-top-color:var(--primary);width:24px;height:24px;border-width:3px"></div><p style="margin-top:12px;color:var(--muted);font-size:13px">Extrayendo datos de WIP...</p></td></tr>';
-
-  try {
-    const r = await fetch('/wip/subscriptions/all');
-    const data = await r.json();
-    window._todosSuscriptores = data.data || [];
-    window._planActual = 'todos';
-    renderSuscriptores(window._todosSuscriptores);
-    btn.textContent = '👥 Cargar Todos';
-    btn.disabled = false;
-  } catch(e) {
-    document.getElementById('sub-err').textContent = 'Error: ' + e.message;
-    document.getElementById('sub-err').classList.add('show');
-    btn.textContent = '👥 Cargar Todos';
-    btn.disabled = false;
-  }
-}
-
-async function cargarSuscriptoresPorPlan(buIds) {
-  _subPagina = 1;
-  document.getElementById('sub-info').textContent = 'Cargando suscriptores del plan...';
-  document.getElementById('sub-tbody').innerHTML = '<tr><td colspan="6" style="text-align:center;padding:24px"><div class="loader" style="border-top-color:var(--primary)"></div></td></tr>';
-
-  try {
-    const seen = new Set();
-    const subs = [];
-    const ids = buIds.split(',').filter(Boolean);
-    const terminos = ['a','e','i','o','u','r','s','n','l','c','m','d','p','g','b'];
-
-    const promesas = [];
-    for (const buId of ids) {
-      const bu = businessUnits.find(b => b.id === buId);
-      for (const term of terminos) {
-        promesas.push(
-          fetch('/wip/subscriptions?searchTerm=' + encodeURIComponent(term) + '&businessUnitId=' + buId)
-            .then(r => r.json())
-            .then(data => {
-              const items = Array.isArray(data) ? data : (data && data.id ? [data] : []);
-              items.forEach(s => {
-                const key = (s.documentId || s.id) + buId;
-                if (!seen.has(key)) {
-                  seen.add(key);
-                  subs.push({ ...s, buId, buName: bu?.name || buId });
-                }
-              });
-            }).catch(() => {})
-        );
-      }
-    }
-    await Promise.all(promesas);
-    window._todosSuscriptores = subs;
-    window._planActual = buIds;
-    renderSuscriptores(subs);
-  } catch(e) {
-    document.getElementById('sub-err').textContent = 'Error: ' + e.message;
-    document.getElementById('sub-err').classList.add('show');
-  }
-}
-
-
-
-// Paginación suscriptores
-let _subPagina = 1;
-const _subPorPagina = 50;
-
-async function cargarTodosSuscriptores() {
-  _subPagina = 1;
-  window._todosSuscriptores = [];
-  await cargarPaginaSuscriptores();
-}
-
-async function cargarPaginaSuscriptores() {
-  document.getElementById('sub-info').textContent = 'Cargando página ' + _subPagina + '...';
-  document.getElementById('sub-tbody').innerHTML = '<tr><td colspan="6" style="text-align:center;padding:24px"><div class="loader" style="border-top-color:var(--primary)"></div></td></tr>';
-
-  try {
-    // Usar endpoint optimizado que trae todos
-    const r = await fetch('/wip/subscriptions/all');
-    const data = await r.json();
-    window._todosSuscriptores = data.data || [];
-    renderSuscriptores(window._todosSuscriptores);
-  } catch(e) {
-    document.getElementById('sub-err').textContent = 'Error: ' + e.message;
-    document.getElementById('sub-err').classList.add('show');
-  }
-}
-
-async function buscarSuscriptores() {
-  _subPagina = 1;
-  const planBuIds = document.getElementById('sub-bu').value;
-  const search = document.getElementById('sub-search').value.trim();
-
-  if (!planBuIds && !search) {
-    document.getElementById('sub-info').textContent = 'Selecciona un plan o busca por cédula/nombre.';
-    document.getElementById('sub-tbody').innerHTML = '<tr><td colspan="6"><div class="empty-state"><p>Selecciona un plan o ingresa una cédula para buscar.</p></div></td></tr>';
-    return;
-  }
-
-  // Si hay texto de búsqueda, buscar en todas las BUs
-  if (search && !planBuIds) {
-    await buscarPorTexto(search);
-    return;
-  }
-
-  // Si cambió el plan, cargar nuevos datos
-  if (planBuIds && window._planActual !== planBuIds) {
-    await cargarSuscriptoresPorPlan(planBuIds);
-    return;
-  }
-
-  // Filtrar los ya cargados por búsqueda de texto
-  renderSuscriptores(window._todosSuscriptores || []);
-}
-
-async function buscarPorTexto(search) {
-  document.getElementById('sub-info').textContent = 'Buscando...';
-  document.getElementById('sub-tbody').innerHTML = '<tr><td colspan="6" style="text-align:center;padding:24px"><div class="loader" style="border-top-color:var(--primary)"></div></td></tr>';
-
-  try {
-    const seen = new Set();
-    const subs = [];
-    const promesas = businessUnits.map(bu =>
-      fetch('/wip/subscriptions?searchTerm=' + encodeURIComponent(search) + '&businessUnitId=' + bu.id)
-        .then(r => r.json())
-        .then(data => {
-          const items = Array.isArray(data) ? data : (data && data.id ? [data] : []);
-          items.forEach(s => {
-            const key = (s.documentId || s.id) + bu.id;
-            if (!seen.has(key)) { seen.add(key); subs.push({ ...s, buId: bu.id, buName: bu.name }); }
-          });
-        }).catch(() => {})
-    );
-    await Promise.all(promesas);
-    window._todosSuscriptores = subs;
-    window._planActual = null;
-    renderSuscriptores(subs);
-  } catch(e) {
-    document.getElementById('sub-err').textContent = 'Error: ' + e.message;
-    document.getElementById('sub-err').classList.add('show');
-  }
-}
-
-function renderSuscriptores(subs) {
-  // Filtrar si hay búsqueda activa
-  const planFiltro = document.getElementById('sub-bu')?.value || '';
-  const textFiltro = document.getElementById('sub-search')?.value?.trim().toLowerCase() || '';
-
-  let filtrados = subs;
-  if (planFiltro) {
-    const ids = planFiltro.split(',');
-    filtrados = filtrados.filter(s => ids.includes(s.buId));
-  }
-  if (textFiltro) {
-    filtrados = filtrados.filter(s =>
-      (s.name && s.name.toLowerCase().includes(textFiltro)) ||
-      (s.documentId && s.documentId.includes(textFiltro)) ||
-      (s.phone && s.phone.includes(textFiltro))
-    );
-  }
-
-  // Deduplicar por documentId — agrupar planes por cliente
-  const clienteMap = new Map();
-  filtrados.forEach(s => {
-    const key = s.documentId || s.id;
-    if (!clienteMap.has(key)) clienteMap.set(key, { ...s, planes: [] });
-    const planInfo = PLAN_MAP[s.buId] || { plan: s.buName, color: '#64748b' };
-    const existing = clienteMap.get(key);
-    if (!existing.planes.find(p => p.plan === planInfo.plan)) {
-      existing.planes.push({ ...planInfo, buName: s.buName, valid: s.valid });
-    }
-  });
-
-  const clientes = Array.from(clienteMap.values());
-  const total = clientes.length;
-  const inicio = (_subPagina - 1) * _subPorPagina;
-  const fin    = inicio + _subPorPagina;
-  const pagina = clientes.slice(inicio, fin);
-  const totalPaginas = Math.ceil(total / _subPorPagina);
-
-  document.getElementById('sub-info').textContent =
-    total + ' suscriptor(es) — Página ' + _subPagina + ' de ' + totalPaginas;
-  document.getElementById('btn-export').style.display = total > 0 ? 'inline-flex' : 'none';
-
-  if (!pagina.length) {
-    document.getElementById('sub-tbody').innerHTML = '<tr><td colspan="6"><div class="empty-state"><p>No se encontraron suscriptores.</p></div></td></tr>';
-    renderPaginacion(totalPaginas, clientes);
-    return;
-  }
-
-  document.getElementById('sub-tbody').innerHTML = pagina.map((s, i) => {
-    const planesHtml = s.planes.map(p =>
-      '<span style="background:' + p.color + '22;color:' + p.color + ';padding:2px 8px;border-radius:20px;font-size:11px;font-weight:600;margin-right:4px">' + p.plan + '</span>'
-    ).join('');
-    const estadoHtml = s.planes.some(p => p.valid)
-      ? '<span class="badge badge-done">Activo</span>'
-      : '<span class="badge badge-cancelled">Expirado</span>';
-    return '<tr>' +
-      '<td style="color:var(--muted);font-size:12px">' + (inicio + i + 1) + '</td>' +
-      '<td style="font-weight:500">' + (s.name || '—') + '</td>' +
-      '<td style="font-size:12px">' + (s.documentId || '—') + '</td>' +
-      '<td style="font-size:12px">' + (s.phone || '—') + '</td>' +
-      '<td>' + planesHtml + '</td>' +
-      '<td>' + estadoHtml + '</td>' +
-    '</tr>';
-  }).join('');
-
-  renderPaginacion(totalPaginas, clientes);
-}
-
-function exportarExcel() {
-  const subs = window._todosSuscriptores || [];
-  if (!subs.length) return alert('No hay datos para exportar.');
-
-  const clienteMap = new Map();
-  subs.forEach(s => {
-    const key = s.documentId || s.id;
-    if (!clienteMap.has(key)) clienteMap.set(key, { ...s, planes: [] });
-    const planInfo = PLAN_MAP[s.buId] || { plan: s.buName };
-    const existing = clienteMap.get(key);
-    if (!existing.planes.find(p => p.plan === planInfo.plan)) {
-      existing.planes.push({ plan: planInfo.plan, valid: s.valid });
-    }
-  });
-
-  const clientes = Array.from(clienteMap.values());
-  let csv = 'Nombre,Documento,Telefono,Planes,Estado\n';
-  clientes.forEach(s => {
-    const nombre = (s.name || '').replace(/,/g, ' ');
-    const doc = s.documentId || '';
-    const tel = s.phone || '';
-    const planes = s.planes.map(p => p.plan).join(' - ');
-    const estado = s.planes.some(p => p.valid) ? 'Activo' : 'Expirado';
-    csv += nombre + ',' + doc + ',' + tel + ',' + planes + ',' + estado + '\n';
-  });
-
-  const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = 'suscriptores_' + new Date().toISOString().slice(0,10) + '.csv';
-  a.click();
-  URL.revokeObjectURL(url);
-}
-
-
-function renderPaginacion(totalPaginas, clientes) {
-  // Eliminar paginación anterior
-  const old = document.getElementById('sub-paginacion');
-  if (old) old.remove();
-
-  if (totalPaginas <= 1) return;
-
-  const div = document.createElement('div');
-  div.id = 'sub-paginacion';
-  div.style.cssText = 'display:flex;align-items:center;justify-content:center;gap:8px;padding:16px;';
-
-  const btnPrev = document.createElement('button');
-  btnPrev.className = 'btn btn-outline btn-sm';
-  btnPrev.textContent = '← Anterior';
-  btnPrev.disabled = _subPagina <= 1;
-  btnPrev.onclick = function() { _subPagina--; renderSuscriptores(window._todosSuscriptores); };
-
-  const info = document.createElement('span');
-  info.style.cssText = 'font-size:13px;color:var(--muted);padding:0 8px;';
-  info.textContent = 'Página ' + _subPagina + ' / ' + totalPaginas;
-
-  const btnNext = document.createElement('button');
-  btnNext.className = 'btn btn-primary btn-sm';
-  btnNext.textContent = 'Siguiente →';
-  btnNext.disabled = _subPagina >= totalPaginas;
-  btnNext.onclick = function() { _subPagina++; renderSuscriptores(window._todosSuscriptores); };
-
-  div.appendChild(btnPrev);
-  div.appendChild(info);
-  div.appendChild(btnNext);
-
-  document.querySelector('.table-card').appendChild(div);
-}
-
 // Init
 window.addEventListener('DOMContentLoaded', () => {
   cargarBUs();
-  // Buscar todos los servicios al inicio
   buscarServicios();
 });
 </script>
+
 <!-- Drawer móvil -->
 <div id="mob-drawer" onclick="closeMobDrawer(event)">
   <div id="mob-drawer-panel">
@@ -1539,11 +1193,7 @@ window.addEventListener('DOMContentLoaded', () => {
 
 <!-- WhatsApp Widget -->
 <a href="https://wa.me/573185159138" target="_blank" rel="noopener"
-   style="position:fixed;bottom:20px;right:20px;z-index:999;
-          width:56px;height:56px;border-radius:50%;
-          background:#25d366;display:flex;align-items:center;justify-content:center;
-          box-shadow:0 4px 16px rgba(37,211,102,.5);
-          transition:transform .2s,box-shadow .2s;"
+   style="position:fixed;bottom:20px;right:20px;z-index:999;width:56px;height:56px;border-radius:50%;background:#25d366;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 16px rgba(37,211,102,.5);transition:transform .2s,box-shadow .2s;"
    onmouseover="this.style.transform='scale(1.1)';this.style.boxShadow='0 6px 24px rgba(37,211,102,.7)'"
    onmouseout="this.style.transform='scale(1)';this.style.boxShadow='0 4px 16px rgba(37,211,102,.5)'"
    title="Chatea con nosotros">
@@ -1553,8 +1203,6 @@ window.addEventListener('DOMContentLoaded', () => {
   </svg>
 </a>
 
-</body>
-</html>
 <style id="responsive-styles">
 @media (max-width: 900px) {
   .sidebar { width: 56px; }
@@ -1587,12 +1235,9 @@ window.addEventListener('DOMContentLoaded', () => {
   }
   .form-actions { flex-direction: column; }
   .form-actions .btn { width: 100%; justify-content: center; }
-  .stats { grid-template-columns: 1fr 1fr !important; }
-  /* Fix dropdown en móvil */
   select { -webkit-appearance: auto; appearance: auto; background: var(--surface); color: var(--text); }
   .toggle-row { flex-wrap: wrap; gap: 10px; }
 }
-
 @media (max-width: 500px) {
   .sidebar { width: 48px; }
   .topbar-title strong { font-size: 13px; }
@@ -1602,3 +1247,5 @@ window.addEventListener('DOMContentLoaded', () => {
   .form-card { padding: 14px 12px; }
 }
 </style>
+</body>
+</html>
