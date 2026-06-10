@@ -917,7 +917,11 @@ async function onPlanChange() {
   if (!val) return;
   const [customerId, buId] = val.split('|');
   document.getElementById('ag-bu').value = buId;
-  await cargarTipos(customerId, buId);
+  // Usar siempre el customerId de la suscripción activa para esa BU
+  const suscActiva = (window._allClientes || []).find(c => c.valid && c.busCubiertas.some(b => b.id === buId));
+  const idParaWIP = suscActiva ? suscActiva.id : customerId;
+  console.log('[onPlanChange] buId:', buId, '| customerId original:', customerId, '| idParaWIP:', idParaWIP);
+  await cargarTipos(idParaWIP, buId);
 }
 
 async function onBUChange() {
