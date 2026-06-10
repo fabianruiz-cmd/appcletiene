@@ -965,7 +965,7 @@ async function cargarTipos(customerId, buId) {
     const tiposMap = new Map();
     llamadas.forEach(data => {
       (data.typeServices || [])
-        .filter(t => t.availability && t.enabled) // incluir serviceLimit = 0
+        .filter(t => t.enabled) // mostrar todos los habilitados en WIP
         .forEach(t => { if (!tiposMap.has(t.id)) tiposMap.set(t.id, t); });
     });
 
