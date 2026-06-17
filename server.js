@@ -321,6 +321,9 @@ app.post('/wip/services/create', async (req, res) => {
     body.owner       = body.owner       || { id: cfg.OWNER_ID, name: cfg.OWNER_NAME, type: 'Owner' };
     body.buOwner     = body.buOwner     || { id: cfg.OWNER_ID, name: cfg.OWNER_NAME, type: 'BuOwner' };
     body.creatorUser = body.creatorUser || { id: cfg.USER_ID, name: cfg.OWNER_NAME };
+    console.log('[CREATE] fromWhere:', JSON.stringify(body.fromWhere));
+    console.log('[CREATE] whereTo:', JSON.stringify(body.whereTo));
+    console.log('[CREATE] body completo:', JSON.stringify(body).slice(0, 500));
     const r = await wipFetch('/service/api/v2/Service/' + cfg.COMPANY_ID + '/service/' + cfg.USER_ID, 'POST', body, env);
     if (r.ok) {
       const tel    = body.userClientePhone || body.userPhone || '';
