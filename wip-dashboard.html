@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+ <!DOCTYPE html>
 <html lang="es">
 <head>
   <meta charset="UTF-8"/>
@@ -503,7 +503,7 @@
       </div>
 
       <!-- Toggle destino -->
-      <div class="form-card">
+      <div class="form-card" id="seccion-direccion">
         <div class="toggle-row">
           <div>
             <div class="toggle-label">¿Este servicio requiere traslado de un punto a otro?</div>
@@ -988,9 +988,36 @@ async function cargarTipos(customerId, buId) {
       }
       tipoSel.innerHTML = '<option value="">Seleccione el tipo...</option>' + opts;
     }
+    // Escuchar cambio de tipo para mostrar/ocultar dirección
+    tipoSel.onchange = verificarTipoServicio;
   } catch(e) {
     if (myToken !== _cargarTiposToken) return;
     tipoSel.innerHTML = '<option value="">Error al cargar tipos</option>';
+  }
+}
+
+// ════ VERIFICAR TIPO DE SERVICIO — ocultar dirección si es telefónico ════
+const TIPOS_TELEFONICOS = ['telefon', 'orientacion', 'teleconsult', 'tele consul', 'virtual', 'remoto'];
+
+function verificarTipoServicio() {
+  const tipoRaw = document.getElementById('ag-tipo').value;
+  const tipoNombre = tipoRaw ? tipoRaw.split('|')[2] || '' : '';
+  const esTelefonico = TIPOS_TELEFONICOS.some(t => tipoNombre.toLowerCase().includes(t));
+  
+  const seccionDir = document.getElementById('seccion-direccion');
+  if (seccionDir) {
+    if (esTelefonico) {
+      seccionDir.style.display = 'none';
+      // Limpiar campos de dirección
+      document.getElementById('ag-from-addr').value = 'Servicio Telefónico';
+      document.getElementById('ag-from-city').value = 'N/A';
+    } else {
+      seccionDir.style.display = 'block';
+      if (document.getElementById('ag-from-addr').value === 'Servicio Telefónico') {
+        document.getElementById('ag-from-addr').value = '';
+        document.getElementById('ag-from-city').value = '';
+      }
+    }
   }
 }
 
@@ -1014,8 +1041,16 @@ async function registrarServicio() {
   const err = document.getElementById('ag-err');
   err.classList.remove('show');
 
-  if (!doc || !cliente || !buRaw || !tipoRaw || !fecha || !fromAddr || !fromCity) {
+  const tipoNombreVal = tipoRaw ? (tipoRaw.split('|')[2] || '') : '';
+  const esTelefonicoVal = TIPOS_TELEFONICOS.some(t => tipoNombreVal.toLowerCase().includes(t));
+  
+  if (!doc || !cliente || !buRaw || !tipoRaw || !fecha) {
     err.textContent = 'Por favor completa todos los campos obligatorios (*)';
+    err.classList.add('show');
+    return;
+  }
+  if (!esTelefonicoVal && (!fromAddr || !fromCity)) {
+    err.textContent = 'Por favor completa la dirección del servicio (*)';
     err.classList.add('show');
     return;
   }
