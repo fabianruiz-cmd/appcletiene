@@ -1,4 +1,4 @@
- <!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="es">
 <head>
   <meta charset="UTF-8"/>
@@ -309,6 +309,10 @@
       <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
       <span>Nuestros Planes</span>
     </div>
+    <div class="nav-item" id="nav-chat" onclick="showPanel('chat')">
+      <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+      <span>Chat Agentes</span>
+    </div>
     <a href="https://cltiene.com/tienda/" target="_blank" rel="noopener" style="text-decoration:none">
       <div class="nav-item">
         <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 01-8 0"/></svg>
@@ -611,6 +615,20 @@
       </div>
     </div>
 
+    <!-- ══ PANEL CHAT ══ -->
+    <div class="panel" id="panel-chat">
+      <div class="panel-header">
+        <div>
+          <h1>💬 Chat de Atención</h1>
+          <p>Sistema de chat con agentes CL TIENE.</p>
+        </div>
+        <a href="https://chat-production-2f09.up.railway.app" target="_blank" class="btn btn-outline btn-sm">Abrir en pestaña →</a>
+      </div>
+      <div style="background:var(--white);border:1px solid var(--border);border-radius:12px;overflow:hidden;height:calc(100vh - 160px)">
+        <iframe src="https://chat-production-2f09.up.railway.app" style="width:100%;height:100%;border:none" title="Chat Agentes CL TIENE"></iframe>
+      </div>
+    </div>
+
     <!-- ══ PANEL SUSCRIPTORES ══ -->
     <div class="panel" id="panel-suscriptores">
       <div class="panel-header">
@@ -824,9 +842,10 @@ let clienteBUs = [];
 
 // ════ NAVEGACIÓN ════
 function showPanel(name) {
-  ['servicios','agendar','suscriptores'].forEach(p => {
+  ['servicios','agendar','suscriptores','chat'].forEach(p => {
     document.getElementById('panel-'+p).classList.toggle('active', p===name);
     document.getElementById('nav-'+p)?.classList.toggle('active', p===name);
+    document.getElementById('nav-chat')?.classList.toggle('active', name==='chat');
   });
   if (name === 'agendar' && businessUnits.length === 0) cargarBUs();
 }
@@ -1351,7 +1370,7 @@ window.addEventListener('DOMContentLoaded', () => {
 </div>
 
 <!-- WhatsApp Widget -->
-<a href="https://wa.me/573185159138" target="_blank" rel="noopener"
+<a href="https://api.whatsapp.com/send/?phone=573185159138" target="_blank" rel="noopener"
    style="position:fixed;bottom:20px;right:20px;z-index:999;width:56px;height:56px;border-radius:50%;background:#25d366;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 16px rgba(37,211,102,.5);transition:transform .2s,box-shadow .2s;"
    onmouseover="this.style.transform='scale(1.1)';this.style.boxShadow='0 6px 24px rgba(37,211,102,.7)'"
    onmouseout="this.style.transform='scale(1)';this.style.boxShadow='0 4px 16px rgba(37,211,102,.5)'"
