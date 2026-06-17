@@ -1,4 +1,4 @@
- <!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="es">
 <head>
   <meta charset="UTF-8"/>
@@ -1057,9 +1057,16 @@ async function registrarServicio() {
     automaticCalculation: true,
     // Si hay traslado: fromWhere=origen, whereTo=destino
     // Si NO hay traslado: fromWhere=origen, whereTo=origen (WIP muestra whereTo como "Dirección de destino")
+    // fromWhere = dirección del servicio (origen)
+    // whereTo = lo que WIP muestra como "Dirección de destino"
+    // Cuando hay traslado: whereTo muestra ORIGEN → DESTINO para que el operador vea ambos
     fromWhere: { address: fromAddr, city: fromCity, otherInfo: document.getElementById('ag-from-info').value || '' },
     whereTo: document.getElementById('ag-toggle-destino').checked
-      ? { address: document.getElementById('ag-to-addr').value || fromAddr, city: document.getElementById('ag-to-city').value || fromCity, otherInfo: document.getElementById('ag-to-info').value || '' }
+      ? {
+          address: 'ORIGEN: ' + fromAddr + ' | DESTINO: ' + (document.getElementById('ag-to-addr').value || ''),
+          city: fromCity + ' → ' + (document.getElementById('ag-to-city').value || fromCity),
+          otherInfo: (document.getElementById('ag-from-info').value || '') + (document.getElementById('ag-to-info').value ? ' | ' + document.getElementById('ag-to-info').value : '')
+        }
       : { address: fromAddr, city: fromCity, otherInfo: document.getElementById('ag-from-info').value || '' },
     fields: {}
   };
